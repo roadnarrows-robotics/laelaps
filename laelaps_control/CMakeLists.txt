@@ -31,13 +31,13 @@ find_library(
 add_message_files(
   DIRECTORY msg
   FILES 
-    test.msg
+    test_msg.msg
 )
 
 add_service_files(
   DIRECTORY srv
   FILES
-    test.srv
+    test_srv.srv
 )
 
 #add_action_files(
