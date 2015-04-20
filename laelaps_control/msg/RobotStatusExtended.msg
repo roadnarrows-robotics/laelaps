@@ -12,5 +12,5 @@ industrial_msgs/TriState  in_error          # in error condition: TRUE FALSE
 int32 error_code                            # Laelaps error code
 
 # Laelaps extensions
-MotorCtlrHealth[] motor__ctlr_health        # motor controller health
+MotorCtlrHealth[] motor_ctlr_health         # motor controller health
 MotorHealth[]     motor_health              # motor health
