@@ -1,20 +1,18 @@
 <?xml version="1.0"?>
 <package>
   <name>laelaps</name>
-  <version>0.0.1</version>
+  <version>2.0.0</version>
 
   <description>
-    The Hekateros Robotic Manipulator ROS metapackage - provides complete 
-    laelaps software bundle.
+    The RoadNarrows Laelaps indoor/outdoor robotic platform ROS metapackage.
+    This package provides core Laelaps ROS software bundle.
   </description>
 
-  <author email="daniel@roadnarrows.com">daniel packard</author>
-  <author email="jessica@roadnarrows.com">robin knight</author>
-  <maintainer email="daniel@roadnarrows.com">daniel packard</maintainer>
-  <license>BSD</license>
+  <author email="robin.knight@roadnarrows.com">Robin Knight</author>
+  <maintainer email="robin.knight@roadnarrows.com">Robin Knight</maintainer>
+  <license>MIT</license>
 
   <url type="website">http://roadnarrows.com/Laelaps</url>
-  <url type="website">http://roadnarrows.com/r-and-d/Laelaps</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 

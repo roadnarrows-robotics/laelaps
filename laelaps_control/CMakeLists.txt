@@ -70,12 +70,12 @@ add_service_files(
 ## Generate added messages/services/actions with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  actionlib_msgs
-  geometry_msgs
-  industrial_msgs
-  nav_msgs
-  sensor_msgs
-  std_msgs
+    actionlib_msgs
+    geometry_msgs
+    industrial_msgs
+    nav_msgs
+    sensor_msgs
+    std_msgs
 )
 
 catkin_package(
@@ -84,9 +84,9 @@ catkin_package(
 
 include_directories(
   include 
-  ${rnr_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
+    ${rnr_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
 )
 
 add_executable(laelaps_control src/laelaps_control.cpp)

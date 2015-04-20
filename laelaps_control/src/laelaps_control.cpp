@@ -3,6 +3,7 @@
 
 using namespace std;
 
+#if 0
 bool SetSpeed(mot::SetSpeed::Request &req,
               mot::SetSpeed::Response &rsp)
 {
@@ -11,9 +12,11 @@ bool SetSpeed(mot::SetSpeed::Request &req,
     fprintf(stderr, "Speed = %f \n", req,speed);
   retrun true;
 }
+#endif
 
 int main(int argc, char* argv[])
 { 
+#if 0
   LOG_SET_THRESHOLD(LOG_LEVEL_DIAG3);
   ros::init(argc, argv, "laelaps_control");
   ros::NodeHandle n("laelaps_control");
@@ -44,6 +47,7 @@ int main(int argc, char* argv[])
     fprintf(stderr, "jnt failed to close\n");
     return -1;
   }
+#endif
 
   return 0;
 }
