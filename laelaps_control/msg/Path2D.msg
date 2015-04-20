@@ -1,7 +1,8 @@
 # Laelaps laelaps_control/Path2D
 #
-# A 2D pose specifies position x,y and orientation theta. A timestamped header
-# is also provided. A series of these poses define a path.
-
+# Robot 2D path.
+#
+# A path specifies a series poses.
+#
 Header            header    # standard header
-Pose2DStamped     pose      # 2D poses
+Pose2DStamped[]   poses     # 2D poses

@@ -1,8 +1,13 @@
 ### Laelaps laelaps_control/RobotStatusExtended message
-
-# Base industrial_msgs/RobotStatus
+#
+# Extened robot status.
+#
+# The status includes the ROS industrial information plus extensions specific to
+# the robot.
+#
 Header    header    # standard header
 
+# Base industrial_msgs/RobotStatus
 industrial_msgs/RobotMode mode              # robot operation mode: AUTO MANUAL
 industrial_msgs/TriState  e_stopped         # emergency stopped: TRUE FALSE
 industrial_msgs/TriState  drives_powered    # servos powered: TRUE FALSE

@@ -1,7 +1,10 @@
-### Laelaps laelaps_control/SetVelocities
-
-# Set motor target velocities. Any motors not specified are left at their
+### Laelaps laelaps_control/Velocity
+#
+# Wheel-motor velocities.
+#
+# Set motor target velocities. Any motors not specified remain at their
 # respective current velocities.
-
-string[]  name       # motor name
-float64[] velocity   # wheel linear velocity (meters/seconds)
+#
+Header    header      # standard header
+string[]  name        # motor-wheel name
+float64[] velocity    # wheel linear velocity (meters/seconds)

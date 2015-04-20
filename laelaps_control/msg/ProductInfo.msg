@@ -1,4 +1,7 @@
 ### Laelaps laelaps_control/ProductInfo message
+#
+# Product identifications.
+#
 
 # hardware versions
 string  version_string    # hardware version string
