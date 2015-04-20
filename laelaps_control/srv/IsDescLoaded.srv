@@ -1,0 +1,4 @@
+# Kuon kuon_control/IsDescLoaded service
+
+---
+bool is_desc_loaded   # specific kuon model is [not] loaded and parsed

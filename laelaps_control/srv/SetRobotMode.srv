@@ -1,0 +1,5 @@
+# Kuon kuon_control/SetRobotMode service
+
+industrial_msgs/RobotMode mode    # robot mode: AUTO MANUAL
+---
+int8 rc                           # return code
