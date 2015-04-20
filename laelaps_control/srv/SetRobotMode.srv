@@ -1,4 +1,7 @@
-# Kuon kuon_control/SetRobotMode service
+### Laelaps laelaps_control/SetRobotMode service
+# 
+# Set robot's operational mode.
+#
 
 industrial_msgs/RobotMode mode    # robot mode: AUTO MANUAL
 ---

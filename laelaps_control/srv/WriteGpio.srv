@@ -1,4 +1,7 @@
-# Hekateros hekateros_control/WriteGpio service
+### Laelaps laelaps_control/WriteGpio service
+# 
+# Write GPIO pin value(s).
+#
 
 Gpio[] gpio     # GPIO pin state(s) to write
 ---

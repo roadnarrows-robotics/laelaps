@@ -1,3 +1,6 @@
-# Hekateros hekateros_control/ResetEStop service
+### Laelaps laelaps_control/ResetEStop service
+#
+# Reset robot's emergency stop state.
+#
 
 ---

@@ -2,7 +2,9 @@
 #
 # Motor controller health. For Laelaps, each controller controls two motors.
 # 
-string          name        # motor controller name
+
+# motor controller health
+string          name        # motor controller name: front rear
 float32         temp        # motor controller temperature (C)
 float32         voltage     # motor input voltage (Volts)
 uint8           alarm       # motor or'ed alarm bits (see below)

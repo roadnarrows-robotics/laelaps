@@ -1,4 +1,7 @@
-# Hekateros hekateros_control/ConfigGpio service
+### Laelaps laelaps_control/ConfigGpio service
+# 
+# Configure GPIO(s).
+#
 
 Gpio[] gpio     # configure GPIO pin directions(s)
 ---

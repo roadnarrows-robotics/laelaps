@@ -1,0 +1,8 @@
+### Laelaps laelaps_control/SetVelocities service
+#
+# Set robot's wheel velocities
+#
+
+Velocity  goal_velocity       # goal velocities
+---
+Velocity  actual_velocity     # actual achievable

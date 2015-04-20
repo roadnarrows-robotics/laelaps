@@ -2,7 +2,10 @@
 #
 # Motor health.
 # 
-string          name      # motor name
+
+# motor health
+string          name      # motor name: left_front right_front
+                          #             left_rear right_rear
 float32         temp      # motor temperature (C)
 float32         voltage   # motor input voltage (Volts)
 float32         current   # motor draw current (Amperes)

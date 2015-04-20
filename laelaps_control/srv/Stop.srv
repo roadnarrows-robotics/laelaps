@@ -1,3 +1,6 @@
-# Kuon kuon_control/Stop service
+### Laelaps laelaps_control/Stop service
+#
+# Stop robot. Motors are still driven.
+#
 
 ---

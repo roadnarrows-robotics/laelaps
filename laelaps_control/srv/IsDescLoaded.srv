@@ -1,4 +1,7 @@
-# Kuon kuon_control/IsDescLoaded service
+### Laelaps laelaps_control/IsDescLoaded service
+#
+# Test if robot description has been loaded successfully.
+#
 
 ---
-bool is_desc_loaded   # specific kuon model is [not] loaded and parsed
+bool is_desc_loaded   # specific robot model is [not] loaded and parsed

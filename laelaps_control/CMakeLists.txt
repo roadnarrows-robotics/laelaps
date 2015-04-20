@@ -5,7 +5,9 @@ find_package(catkin
   REQUIRED COMPONENTS 
   actionlib
   actionlib_msgs
+  geometry_msgs
   industrial_msgs
+  nav_msgs
   sensor_msgs
   std_msgs 
   genmsg 
@@ -16,14 +18,9 @@ find_package(catkin
 
 find_package(Boost REQUIRED COMPONENTS system)
 
-# RDK, DHP TODO Create rnrpkgConfig.cmake
-# find_package(rnr
-#   REQUIRED COMPONENTS laelaps Dynamixel botsense netmsgs rnr_appkit rnr
-# )
-find_library(
-  rnr_LIBRARIES
-  NAMES mot rnr
-  PATHS /prj/lib /prj/lib/rnr /usr/local/lib /usr/local/lib/rnr
+set(rnr_DIR /usr/local/lib/cmake/rnr)
+find_package(rnr
+  REQUIRED
 )
 
 #catkin_python_setup()
@@ -31,13 +28,37 @@ find_library(
 add_message_files(
   DIRECTORY msg
   FILES 
-    test_msg.msg
+    Caps.msg
+    Dimensions.msg
+    Dynamics.msg
+    Gpio.msg
+    MotorCtlrHealth.msg
+    MotorHealth.msg
+    Path2D.msg
+    Pose2DStamped.msg
+    ProductInfo.msg
+    RobotStatusExtended.msg
+    Velocity.msg
 )
 
 add_service_files(
   DIRECTORY srv
   FILES
-    test_srv.srv
+    ConfigGpio.srv
+    EStop.srv
+    Freeze.srv
+    GetCaps.srv
+    GetProductInfo.srv
+    IsAlarmed.srv
+    IsDescLoaded.srv
+    ReadGpio.srv
+    Release.srv
+    ReloadConfig.srv
+    ResetEStop.srv
+    SetRobotMode.srv
+    SetVelocities.srv
+    Stop.srv
+    WriteGpio.srv
 )
 
 #add_action_files(
@@ -49,22 +70,28 @@ add_service_files(
 ## Generate added messages/services/actions with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  actionlib_msgs
+  geometry_msgs
+  industrial_msgs
+  nav_msgs
+  sensor_msgs
   std_msgs
 )
 
-catkin_package()
+catkin_package(
+  CATKIN_DEPENDS actionlib_msgs
+)
 
 include_directories(
   include 
-  /prj/include 
+  ${rnr_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
 )
 
 add_executable(laelaps_control src/laelaps_control.cpp)
 
-target_link_libraries(
-  laelaps_control 
+target_link_libraries(laelaps_control 
   ${rnr_LIBRARIES}
   ${catkin_LIBRARIES}
 )
@@ -76,4 +103,3 @@ install(
     scripts/laelaps_teleop
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-

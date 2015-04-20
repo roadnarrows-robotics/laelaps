@@ -1,10 +1,13 @@
 ### Laelaps laelaps_control/Velocity
 #
-# Wheel-motor velocities.
+# Powertrain velocities.
 #
-# Set motor target velocities. Any motors not specified remain at their
-# respective current velocities.
+# Set powertrain target velocities. Any drives not specified remain at their
+# respective current velocities. Velocity is measured at the tire.
 #
+
+# powertrain velocities
 Header    header      # standard header
-string[]  name        # motor-wheel name
-float64[] velocity    # wheel linear velocity (meters/seconds)
+string[]  name        # powertrain name:  left_front right_front
+                      #                   left_rear right_rear
+float64[] velocity    # linear velocity (meters/seconds)

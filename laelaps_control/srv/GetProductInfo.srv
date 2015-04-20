@@ -1,4 +1,7 @@
-# Kuon kuon_control/GetProductInfo service
+### Laelaps laelaps_control/GetProductInfo service
+#
+# Get the robot's product information.
+#
 
 ---
-ProductInfo i
+ProductInfo i   # product information

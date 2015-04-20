@@ -1,3 +1,6 @@
-# Kuon kuon_control/Release service
+### Laelaps laelaps_control/Release service
+#
+# Release motor drives. Motors are no longer driven
+#
 
 ---

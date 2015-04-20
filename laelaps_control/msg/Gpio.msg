@@ -2,6 +2,7 @@
 #
 # User controllable GPIO pins.
 #
+
 uint8 pin       # GPIO pin
 uint8 state     # GPIO state or direction
 

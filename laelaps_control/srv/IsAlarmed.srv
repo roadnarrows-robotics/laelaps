@@ -1,4 +1,7 @@
-# Kuon kuon_control/IsAlarmed service
+### Laelaps laelaps_control/IsAlarmed service
+#
+# Test if robot is in an alarmed state.
+#
 
 ---
 bool is_alarmed   # robot is [not] alarmed

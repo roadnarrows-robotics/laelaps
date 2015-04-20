@@ -1,3 +1,6 @@
-# Kuon kuon_control/Freeze service
+### Laelaps laelaps_control/Freeze service
+#
+# Stop robot with full braking. Motors are still driven.
+#
 
 ---

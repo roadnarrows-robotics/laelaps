@@ -1,3 +1,6 @@
-# Hekateros hekateros_control/ReloadConfig service
+### Laelaps laelaps_control/ReloadConfig service
+# 
+# Reload robot's tuning parameters.
+#
 
 ---
