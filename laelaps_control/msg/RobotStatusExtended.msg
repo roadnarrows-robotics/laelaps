@@ -16,6 +16,10 @@ industrial_msgs/TriState  in_motion         # in motion: TRUE FALSE
 industrial_msgs/TriState  in_error          # in error condition: TRUE FALSE
 int32 error_code                            # Laelaps error code
 
-# Laelaps extensions
+# Laelaps base extensions
+float64           battery                   # estimated battery energy (Wh)
+float64           current                   # estimated total current draw (A)
+float64           voltage                   # input voltage (V)
+float64           temp                      # interior temperature (C)
 MotorCtlrHealth[] motor_ctlr_health         # motor controllers health
 MotorHealth[]     motor_health              # motors health
