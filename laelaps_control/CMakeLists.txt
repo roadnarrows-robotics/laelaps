@@ -18,8 +18,8 @@ find_package(catkin
 
 find_package(Boost REQUIRED COMPONENTS system)
 
-set(rnr_DIR /usr/local/lib/cmake/rnr)
-find_package(rnr
+set(rnr-laelaps_DIR /usr/local/lib/cmake/rnr)
+find_package(rnr-laelaps
   REQUIRED
 )
 
@@ -84,15 +84,17 @@ catkin_package(
 
 include_directories(
   include 
-    ${rnr_INCLUDE_DIRS}
+    ${rnr_laelaps_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
 )
 
-add_executable(laelaps_control src/laelaps_control.cpp)
+add_executable(laelaps_control
+  src/laelaps_control.cpp
+  src/laelaps_control_main.cpp)
 
 target_link_libraries(laelaps_control 
-  ${rnr_LIBRARIES}
+  ${rnr_laelaps_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
