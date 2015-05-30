@@ -84,7 +84,7 @@ catkin_package(
 
 include_directories(
   include 
-    ${rnr_laelaps_INCLUDE_DIRS}
+    ${rnr-laelaps_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
 )
@@ -94,7 +94,7 @@ add_executable(laelaps_control
   src/laelaps_control_main.cpp)
 
 target_link_libraries(laelaps_control 
-  ${rnr_laelaps_LIBRARIES}
+  ${rnr-laelaps_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
