@@ -49,6 +49,7 @@ add_service_files(
     Freeze.srv
     GetCaps.srv
     GetProductInfo.srv
+    Go.srv
     IsAlarmed.srv
     IsDescLoaded.srv
     ReadGpio.srv
@@ -56,7 +57,6 @@ add_service_files(
     ReloadConfig.srv
     ResetEStop.srv
     SetRobotMode.srv
-    SetVelocities.srv
     Stop.srv
     WriteGpio.srv
 )

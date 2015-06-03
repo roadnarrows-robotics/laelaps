@@ -78,18 +78,24 @@
 //
 #include "sensor_msgs/JointState.h"
 #include "industrial_msgs/RobotStatus.h"
+
+//
+// ROS generated Laelaps messages.
+//
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/RobotStatusExtended.h"
 #include "laelaps_control/Gpio.h"
+#include "laelaps_control/SetVelocities.h"
 
 //
-// ROS generatated laelaps services.
+// ROS generatated Laelaps services.
 //
 #include "laelaps_control/ConfigGpio.h"
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
 #include "laelaps_control/GetProductInfo.h"
+#include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
@@ -98,7 +104,6 @@
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/Stop.h"
-#include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/WriteGpio.h"
 
 //
@@ -326,6 +331,17 @@ namespace laelaps_control
                 laelaps_control::Freeze::Response &rsp);
 
     /*!
+     * \brief Get robot capabilities service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getCaps(laelaps_control::GetCaps::Request  &req,
+                 laelaps_control::GetCaps::Response &rsp);
+
+    /*!
      * \brief Get robot product information service callback.
      *
      * \param req   Service request.
@@ -335,6 +351,17 @@ namespace laelaps_control
      */
     bool getProductInfo(laelaps_control::GetProductInfo::Request  &req,
                         laelaps_control::GetProductInfo::Response &rsp);
+
+    /*!
+     * \brief Go service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool go(laelaps_control::Go::Request  &req,
+            laelaps_control::Go::Response &rsp);
 
     /*!
      * \brief Test if robot is alarmed service callback.
@@ -456,14 +483,12 @@ namespace laelaps_control
     // Subscribed Topic Callbacks
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-#if 0 // RDK
     /*!
-     * \brief Execute joint trajectory subscibed topic callback.
+     * \brief Execute set velocities subscibed topic callback.
      *
-     * \param jt  Joint trajectory message.
+     * \param msgVel  Velocity message.
      */
-    void execJointCmd(const trajectory_msgs::JointTrajectory &jt);
-#endif // RDK
+    void execSetVelocities(const laelaps_control::Velocity &msgVel);
   };
 
 } // namespace hc

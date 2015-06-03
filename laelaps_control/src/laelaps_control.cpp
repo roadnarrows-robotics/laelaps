@@ -76,22 +76,28 @@
 #include "actionlib/server/simple_action_server.h"
 
 //
-// ROS generated core, industrial, and laelaps messages.
+// ROS generated core and industrial, and laelaps messages.
 //
 #include "sensor_msgs/JointState.h"
 #include "industrial_msgs/RobotStatus.h"
+
+//
+// ROS generated Laelaps messages.
+//
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/RobotStatusExtended.h"
 #include "laelaps_control/Gpio.h"
+#include "laelaps_control/SetVelocities.h"
 
 //
-// ROS generatated laelaps services.
+// ROS generatated Laelaps services.
 //
 #include "laelaps_control/ConfigGpio.h"
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
 #include "laelaps_control/GetProductInfo.h"
+#include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
@@ -100,7 +106,6 @@
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/Stop.h"
-#include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/WriteGpio.h"
 
 //
@@ -201,9 +206,19 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::freeze,
                                           &(*this));
 
+  strSvc = "get_capabilites";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getCaps,
+                                          &(*this));
+
   strSvc = "get_product_info";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getProductInfo,
+                                          &(*this));
+
+  strSvc = "go";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::go,
                                           &(*this));
 
   strSvc = "is_alarmed";
@@ -302,8 +317,28 @@ bool LaelapsControl::freeze(Freeze::Request  &req,
   return true;
 }
 
+bool LaelapsControl::getCaps(GetCaps::Request  &req,
+                             GetCaps::Response &rsp)
+{
+  const char *svc = "get_capabilites";
+
+  ROS_DEBUG("%s", svc);
+
+  if( !m_robot.isDescribed() )
+  {
+    ROS_ERROR("%s failed: "
+              "Robot description not loaded - unable to determine info.",
+              svc);
+    return false;
+  }
+
+  // RDK TODO
+ 
+  return true;
+}
+
 bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
-                                      GetProductInfo::Response &rsp)
+                                    GetProductInfo::Response &rsp)
 {
   const char *svc = "get_product_info";
 
@@ -338,6 +373,26 @@ bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
 
   rsp.i.hostname  = s;
 
+  return true;
+}
+
+bool LaelapsControl::go(Go::Request  &req,
+                        Go::Response &rsp)
+{
+  const char *svc = "go";
+
+  ROS_DEBUG("%s", svc);
+
+  if( !m_robot.isDescribed() )
+  {
+    ROS_ERROR("%s failed: "
+              "Robot description not loaded - unable to determine info.",
+              svc);
+    return false;
+  }
+
+  // RDK TODO
+ 
   return true;
 }
 
@@ -665,39 +720,27 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
 
 void LaelapsControl::subscribeToTopics(int nQueueDepth)
 {
-#if 0 // RDK
   string  strSub;
 
-  strSub = "joint_command";
+  strSub = "set_velocities";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
-                                          &LaelapsControl::execJointCmd,
+                                          &LaelapsControl::execSetVelocities,
                                           &(*this));
-#endif // RDK
 }
 
-#if 0 // RDK
-void LaelapsControl::execJointCmd(const trajectory_msgs::JointTrajectory &jt)
+void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
 {
-  ROS_DEBUG("Executing joint_command.");
+  LaeMapVelocity  vel;
 
-  LaeJointTrajectoryPoint pt;
-
-  ROS_INFO("Move");
+  ROS_INFO("Set velocities");
 
   // load trajectory point
-  for(int j=0; j<jt.joint_names.size(); ++j)
+  for(int i=0; i<msgVel.names.size(); ++i)
   {
-    pt.append(jt.joint_names[j],
-              jt.points[0].positions[j], 
-              jt.points[0].velocities[j]);
-    ROS_INFO(" %-12s: pos=%7.3lf(%6.2lfdeg) vel=%7.3lf(%6.2lfdeg/s)",
-        jt.joint_names[j].c_str(), 
-        jt.points[0].positions[j], 
-        radToDeg(jt.points[0].positions[j]), 
-        jt.points[0].velocities[j],
-        radToDeg(jt.points[0].velocities[j]));
+    vel[msgVel.names[i]] = msgVel.velocities[i];
+    ROS_INFO(" %-12s: vel=%7.3lfm/s",
+        msgVel.names[i].c_str(), msgVel.velocities[i]);
   }
 
-  m_robot.moveArm(pt);
+  m_robot.go(vel);
 }
-#endif // RDK

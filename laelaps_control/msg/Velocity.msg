@@ -8,6 +8,6 @@
 
 # powertrain velocities
 Header    header      # standard header
-string[]  name        # powertrain name:  left_front right_front
+string[]  names       # powertrain names: left_front right_front
                       #                   left_rear right_rear
-float64[] velocity    # linear velocity (meters/seconds)
+float64[] velocities  # linear velocities (meters/seconds)
