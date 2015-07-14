@@ -85,7 +85,7 @@
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/RobotStatusExtended.h"
 #include "laelaps_control/Gpio.h"
-#include "laelaps_control/SetVelocities.h"
+#include "laelaps_control/Velocity.h"
 
 //
 // ROS generatated Laelaps services.
