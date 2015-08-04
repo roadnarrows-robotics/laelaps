@@ -118,8 +118,7 @@ static int  RcvSignal = NO_SIGNAL;            ///< received 'gracefull' signal
 // Options
 //
 static char  *OptsCfgFile       = (char *)LaeEtcCfg;        ///< config file
-static char  *OptsDevMotorCtlr0 = (char *)LaeDevMotorCtlr0; ///< motor ctlr 0
-static char  *OptsDevMotorCtlr1 = (char *)LaeDevMotorCtlr1; ///< motor ctlr 1
+static char  *OptsDevMotorCtlrs = (char *)LaeDevMotorCtlrs; ///< motor ctlr dev
 
 /*!
  * \brief The package information.
@@ -176,31 +175,17 @@ static OptsInfo_T AppOptsInfo[] =
                           // opt desc
   },
 
-  // --ctrl0
+  // --ctrldev
   {
-    "ctrl0",              // long_opt
+    "ctrldev",            // long_opt
     OPTS_NO_SHORT,        // short_opt
     required_argument,    // has_arg
     true,                 // has_default
-    &OptsDevMotorCtlr0,   // opt_addr
+    &OptsDevMotorCtlrs,   // opt_addr
     OptsCvtArgStr,        // fn_cvt
     OptsFmtStr,           // fn_fmt
     "<device>",           // arg_name
-    "Laelaps motor controller 0 serial device name."
-                          // opt desc
-  },
-
-  // --ctrl1
-  {
-    "ctrl1",              // long_opt
-    OPTS_NO_SHORT,        // short_opt
-    required_argument,    // has_arg
-    true,                 // has_default
-    &OptsDevMotorCtlr1,   // opt_addr
-    OptsCvtArgStr,        // fn_cvt
-    OptsFmtStr,           // fn_fmt
-    "<device>",           // arg_name
-    "Laelaps motor controller 1 serial device name."
+    "Laelaps motor controllers serial device name."
                           // opt desc
   },
 
@@ -295,7 +280,7 @@ int main(int argc, char *argv[])
   //
   for(int i = 0; i < nMaxTries; ++i)
   {
-    if( (rc = laelaps.connect(OptsDevMotorCtlr0, OptsDevMotorCtlr1)) == LAE_OK )
+    if( (rc = laelaps.connect(OptsDevMotorCtlrs)) == LAE_OK )
     {
       stringstream ss;
       ss  << strNodeName << ": Connected to Laelaps.";  
