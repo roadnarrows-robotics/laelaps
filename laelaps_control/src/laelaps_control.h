@@ -180,7 +180,8 @@ namespace laelaps_control
      */
     int connect(const std::string &strDevMotorCtlrs)
     {
-      return m_robot.connect(strDevMotorCtlrs);
+      return strDevMotorCtlrs.empty()?  m_robot.connect():
+                                        m_robot.connect(strDevMotorCtlrs);
     }
 
     /*!

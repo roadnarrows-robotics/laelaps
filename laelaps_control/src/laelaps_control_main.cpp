@@ -117,8 +117,8 @@ static int  RcvSignal = NO_SIGNAL;            ///< received 'gracefull' signal
 //
 // Options
 //
-static char  *OptsCfgFile       = (char *)LaeEtcCfg;        ///< config file
-static char  *OptsDevMotorCtlrs = (char *)LaeDevMotorCtlrs; ///< motor ctlr dev
+static char  *OptsCfgFile       = (char *)LaeEtcCfg;  ///< config file
+static char  *OptsDevMotorCtlrs = (char *)"";         ///< motor ctlr device
 
 /*!
  * \brief The package information.
@@ -180,7 +180,7 @@ static OptsInfo_T AppOptsInfo[] =
     "ctrldev",            // long_opt
     OPTS_NO_SHORT,        // short_opt
     required_argument,    // has_arg
-    true,                 // has_default
+    false,                 // has_default
     &OptsDevMotorCtlrs,   // opt_addr
     OptsCvtArgStr,        // fn_cvt
     OptsFmtStr,           // fn_fmt
