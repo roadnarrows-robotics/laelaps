@@ -43,6 +43,8 @@ add_message_files(
     ProductInfo.msg
     RangeState.msg
     RobotStatusExtended.msg
+    RobotTrajectory2D.msg
+    RobotTrajectoryPoint2D.msg
     ToFSensorCaps.msg
     Velocity.msg
 )
@@ -58,7 +60,6 @@ add_service_files(
     GetImu.srv
     GetProductInfo.srv
     GetRange.srv
-    Go.srv
     IsAlarmed.srv
     IsDescLoaded.srv
     ReadGpio.srv
@@ -66,6 +67,7 @@ add_service_files(
     ReloadConfig.srv
     ResetEStop.srv
     SetRobotMode.srv
+    SetVelocities.srv
     Stop.srv
     WriteGpio.srv
 )

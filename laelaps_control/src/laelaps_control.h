@@ -101,6 +101,8 @@
 #include "laelaps_control/ProductInfo.h"
 #include "laelaps_control/RangeState.h"
 #include "laelaps_control/RobotStatusExtended.h"
+#include "laelaps_control/RobotTrajectory2D.h"
+#include "laelaps_control/RobotTrajectoryPoint2D.h"
 #include "laelaps_control/ToFSensorCaps.h"
 #include "laelaps_control/Velocity.h"
 
@@ -115,7 +117,6 @@
 #include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetProductInfo.h"
 #include "laelaps_control/GetRange.h"
-#include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
@@ -123,6 +124,7 @@
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetRobotMode.h"
+#include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
 #include "laelaps_control/WriteGpio.h"
 
@@ -412,17 +414,6 @@ namespace laelaps_control
                   laelaps_control::GetRange::Response &rsp);
 
     /*!
-     * \brief Go service callback.
-     *
-     * \param req   Service request.
-     * \param rsp   Service response.
-     *
-     * \return Returns true on success, false on failure.
-     */
-    bool go(laelaps_control::Go::Request  &req,
-            laelaps_control::Go::Response &rsp);
-
-    /*!
      * \brief Test if robot is alarmed service callback.
      *
      * \param req   Service request.
@@ -499,6 +490,17 @@ namespace laelaps_control
      */
     bool setRobotMode(laelaps_control::SetRobotMode::Request  &req,
                       laelaps_control::SetRobotMode::Response &rsp);
+
+    /*!
+     * \brief Set angular velocities service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool setVelocities(laelaps_control::SetVelocities::Request  &req,
+                       laelaps_control::SetVelocities::Response &rsp);
 
     /*!
      * \brief Stop a set of joints robot service callback.

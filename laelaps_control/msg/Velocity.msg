@@ -10,4 +10,4 @@
 Header    header      # Standard header.
 string[]  names       # Powertrain names: [left_front, right_front,
                       #                   left_rear, right_rear].
-float64[] velocities  # Linear velocities [meters/seconds]
+float64[] velocities  # Angular drive shaft/wheel velocities [radians/seconds]

@@ -104,6 +104,8 @@
 #include "laelaps_control/ProductInfo.h"
 #include "laelaps_control/RangeState.h"
 #include "laelaps_control/RobotStatusExtended.h"
+#include "laelaps_control/RobotTrajectory2D.h"
+#include "laelaps_control/RobotTrajectoryPoint2D.h"
 #include "laelaps_control/ToFSensorCaps.h"
 #include "laelaps_control/Velocity.h"
 
@@ -118,7 +120,6 @@
 #include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetProductInfo.h"
 #include "laelaps_control/GetRange.h"
-#include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
@@ -126,6 +127,7 @@
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetRobotMode.h"
+#include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
 #include "laelaps_control/WriteGpio.h"
 
@@ -248,9 +250,9 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::getProductInfo,
                                           &(*this));
 
-  strSvc = "go";
+  strSvc = "set_velocities";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
-                                          &LaelapsControl::go,
+                                          &LaelapsControl::setVelocities,
                                           &(*this));
 
   strSvc = "is_alarmed";
@@ -508,47 +510,6 @@ bool LaelapsControl::getRange(GetRange::Request  &req,
   }
 }
 
-bool LaelapsControl::go(Go::Request  &req,
-                        Go::Response &rsp)
-{
-  const char     *svc = "go";
-  static u32_t    seq = 0;
-  LaeMapVelocity  vel;
-  int             rc;
-
-  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
-
-  for(size_t i = 0; i < req.goal.names.size(); ++i)
-  {
-    vel[req.goal.names[i]] = req.goal.velocities[i];
-  }
-
-  rc = m_robot.setVelocities(vel);
- 
-  if( rc == LAE_OK )
-  {
-    stampHeader(rsp.actual.header, seq++);
-    
-    // RDK TODO get actual goal, not just copy target goal
-    rsp.actual = req.goal;
-
-    ROS_INFO("Robot velocities set.");
-    for(size_t i = 0; i < rsp.actual.names.size(); ++i)
-    {
-      ROS_INFO(" %-12s: vel=%7.3lfm/s",
-          rsp.actual.names[i].c_str(),
-          rsp.actual.velocities[i]);
-    }
-    return true;
-  }
-  else
-  {
-    ROS_ERROR("Service %s failed: %s(rc=%d).",
-          svc, getStrError(rc), rc);
-    return false;
-  }
-}
-
 bool LaelapsControl::isAlarmed(IsAlarmed::Request  &req,
                                IsAlarmed::Response &rsp)
 {
@@ -674,6 +635,47 @@ bool LaelapsControl::setRobotMode(SetRobotMode::Request  &req,
   ROS_INFO("Robot mode set to %d.", req.mode.val);
 
   return true;
+}
+
+bool LaelapsControl::setVelocities(SetVelocities::Request  &req,
+                                   SetVelocities::Response &rsp)
+{
+  const char     *svc = "set_velocities";
+  static u32_t    seq = 0;
+  LaeMapVelocity  vel;
+  int             rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  for(size_t i = 0; i < req.goal.names.size(); ++i)
+  {
+    vel[req.goal.names[i]] = req.goal.velocities[i];
+  }
+
+  rc = m_robot.setVelocities(vel);
+ 
+  if( rc == LAE_OK )
+  {
+    stampHeader(rsp.actual.header, seq++);
+    
+    // RDK TODO get actual goal, not just copy target goal
+    rsp.actual = req.goal;
+
+    ROS_INFO("Robot velocities set.");
+    for(size_t i = 0; i < rsp.actual.names.size(); ++i)
+    {
+      ROS_INFO(" %-12s: vel=%7.2lfdeg/s",
+          rsp.actual.names[i].c_str(),
+          radToDeg(rsp.actual.velocities[i]));
+    }
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed: %s(rc=%d).",
+          svc, getStrError(rc), rc);
+    return false;
+  }
 }
 
 bool LaelapsControl::stop(Stop::Request  &req,
@@ -953,8 +955,8 @@ void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
   for(int i=0; i<msgVel.names.size(); ++i)
   {
     vel[msgVel.names[i]] = msgVel.velocities[i];
-    ROS_INFO(" %-12s: vel=%7.3lfm/s",
-        msgVel.names[i].c_str(), msgVel.velocities[i]);
+    ROS_INFO(" %-12s: vel=%7.2lfdeg/s",
+        msgVel.names[i].c_str(), radToDeg(msgVel.velocities[i]));
   }
 
   m_robot.setVelocities(vel);
