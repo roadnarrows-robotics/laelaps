@@ -28,16 +28,22 @@ find_package(rnr-laelaps
 add_message_files(
   DIRECTORY msg
   FILES 
+    AmbientLightSensorCaps.msg
     Caps.msg
     Dimensions.msg
     Dynamics.msg
     Gpio.msg
+    IlluminanceState.msg
+    ImuCaps.msg
     MotorCtlrHealth.msg
     MotorHealth.msg
     Path2D.msg
     Pose2DStamped.msg
+    PowertrainCaps.msg
     ProductInfo.msg
+    RangeState.msg
     RobotStatusExtended.msg
+    ToFSensorCaps.msg
     Velocity.msg
 )
 
@@ -48,7 +54,10 @@ add_service_files(
     EStop.srv
     Freeze.srv
     GetCaps.srv
+    GetIlluminance.srv
+    GetImu.srv
     GetProductInfo.srv
+    GetRange.srv
     Go.srv
     IsAlarmed.srv
     IsDescLoaded.srv

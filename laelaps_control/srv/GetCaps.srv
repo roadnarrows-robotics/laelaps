@@ -1,7 +1,8 @@
 ### Laelaps laelaps_control/GetCaps service
 #
-# Get the robot's capabilities.
+# Get the robot's base capabilities.
 #
 
 ---
-Caps caps   # robot capabilites
+Caps caps    # robot base capabilites
+

@@ -1,0 +1,8 @@
+### Laelaps laelaps_control/GetRange service
+#
+# Get the current distance sensed by the given range sensor.
+#
+
+string            name    # Name of range sensor.
+---
+sensor_msgs/Range sensor  # Sense range plus operating characteristics.

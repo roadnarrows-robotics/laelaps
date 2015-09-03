@@ -5,4 +5,3 @@
 
 Gpio[] gpio     # GPIO pin state(s) to write
 ---
-uint8[] state   # pin states(s) after write

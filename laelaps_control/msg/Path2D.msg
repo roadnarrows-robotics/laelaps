@@ -5,5 +5,5 @@
 # A path specifies a series poses.
 #
 
-Header            header    # standard header
+Header            header    # Standard header.
 Pose2DStamped[]   poses     # 2D poses

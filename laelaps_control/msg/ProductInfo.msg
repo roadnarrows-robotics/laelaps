@@ -4,15 +4,15 @@
 #
 
 # hardware versions
-string  version_string    # hardware version string
-int64   maj               # hardware major version
-int64   min               # hardware minor version
-int64   rev               # hardware revision
+string  version_string    # Hardware version string.
+int64   maj               # Hardware major version.
+int64   min               # Hardware minor version.
+int64   rev               # Hardware revision.
 
 # product ids and description
-string  product_name      # product name
-uint32  product_id        # product unique id
-string  desc              # product description
+string  product_name      # Product name.
+uint32  product_id        # Product unique id.
+string  desc              # Product description.
 
 # environment
-string  hostname          # hostname of Laelaps
+string  hostname          # Hostname of Laelaps.

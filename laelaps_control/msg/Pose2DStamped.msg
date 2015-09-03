@@ -6,5 +6,5 @@
 # is also provided. A series of these poses define a path.
 #
 
-Header                header    # standard header
-geometry_msgs/Pose2D  pose      # 2D pose
+Header                header    # Standard header.
+geometry_msgs/Pose2D  pose      # 2D pose [meters, meters, radians].

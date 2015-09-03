@@ -1,0 +1,8 @@
+### Laelaps laelaps_control/GetImu service
+#
+# Get the current Inertia Measurement Unit data.
+#
+
+string          name  # Name of IMU.
+---
+sensor_msgs/Imu imu   # IMU data.

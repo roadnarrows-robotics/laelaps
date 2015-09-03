@@ -74,17 +74,34 @@
 #include "actionlib/server/simple_action_server.h"
 
 //
-// ROS generated core, industrial, and laelaps messages.
+// ROS generated core and industrial messages.
 //
-#include "sensor_msgs/JointState.h"
+#include "geometry_msgs/Point.h"
+#include "geometry_msgs/Quaternion.h"
 #include "industrial_msgs/RobotStatus.h"
+#include "sensor_msgs/Illuminance.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/JointState.h"
+#include "sensor_msgs/Range.h"
 
 //
 // ROS generated Laelaps messages.
 //
+#include "laelaps_control/Caps.h"
+#include "laelaps_control/Dimensions.h"
 #include "laelaps_control/Dynamics.h"
-#include "laelaps_control/RobotStatusExtended.h"
 #include "laelaps_control/Gpio.h"
+#include "laelaps_control/IlluminanceState.h"
+#include "laelaps_control/ImuCaps.h"
+#include "laelaps_control/MotorCtlrHealth.h"
+#include "laelaps_control/MotorHealth.h"
+#include "laelaps_control/Path2D.h"
+#include "laelaps_control/Pose2DStamped.h"
+#include "laelaps_control/PowertrainCaps.h"
+#include "laelaps_control/ProductInfo.h"
+#include "laelaps_control/RangeState.h"
+#include "laelaps_control/RobotStatusExtended.h"
+#include "laelaps_control/ToFSensorCaps.h"
 #include "laelaps_control/Velocity.h"
 
 //
@@ -94,7 +111,10 @@
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
+#include "laelaps_control/GetIlluminance.h"
+#include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetProductInfo.h"
+#include "laelaps_control/GetRange.h"
 #include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
@@ -278,7 +298,7 @@ namespace laelaps_control
   protected:
     ros::NodeHandle    &m_nh;     ///< the node handler bound to this instance
     double              m_hz;     ///< application nominal loop rate
-    laelaps::LaeRobot m_robot;  ///< real-time, Laelaps robotic arm
+    laelaps::LaeRobot   m_robot;  ///< real-time, Laelaps robotic arm
 
     // ROS services, publishers, subscriptions.
     MapServices       m_services;       ///< Laelaps control server services
@@ -288,9 +308,15 @@ namespace laelaps_control
 
     // Messages for published data.
     Dynamics                      m_msgDynamics;    ///< robot dynamics
+    IlluminanceState              m_msgIlluminanceState;
+                                        ///< ambient light sensors state message
+    sensor_msgs::Imu              m_msgImu;         ///< IMU state message
+    sensor_msgs::JointState       m_msgJointState;  ///< joint state message
+    RangeState                    m_msgRangeState;
+                                        ///< range sensors state message
     industrial_msgs::RobotStatus  m_msgRobotStatus; ///< robot status message
     RobotStatusExtended           m_msgRobotStatusEx;
-                                              ///< extended robot status message
+                                        ///< extended robot status message
 
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     // Service callbacks
@@ -330,7 +356,7 @@ namespace laelaps_control
                 laelaps_control::Freeze::Response &rsp);
 
     /*!
-     * \brief Get robot capabilities service callback.
+     * \brief Get robot base capabilities service callback.
      *
      * \param req   Service request.
      * \param rsp   Service response.
@@ -339,6 +365,29 @@ namespace laelaps_control
      */
     bool getCaps(laelaps_control::GetCaps::Request  &req,
                  laelaps_control::GetCaps::Response &rsp);
+
+    /*!
+     * \brief Get ambient light sensor's latest sensed data service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getIlluminance(laelaps_control::GetIlluminance::Request  &req,
+                        laelaps_control::GetIlluminance::Response &rsp);
+
+    /*!
+     * \brief Get inertia measurement unit's latest sensed data service
+     * callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getImu(laelaps_control::GetImu::Request  &req,
+                laelaps_control::GetImu::Response &rsp);
 
     /*!
      * \brief Get robot product information service callback.
@@ -350,6 +399,17 @@ namespace laelaps_control
      */
     bool getProductInfo(laelaps_control::GetProductInfo::Request  &req,
                         laelaps_control::GetProductInfo::Response &rsp);
+
+    /*!
+     * \brief Get time-of-flight sensor's latest sensed data service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getRange(laelaps_control::GetRange::Request  &req,
+                  laelaps_control::GetRange::Response &rsp);
 
     /*!
      * \brief Go service callback.
@@ -468,7 +528,7 @@ namespace laelaps_control
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
     /*!
-     * \brief Publish joint state and extended joint state topics.
+     * \brief Publish dynamics and joint state topics.
      */
     void publishDynamics();
 
@@ -476,6 +536,11 @@ namespace laelaps_control
      * \brief Publish robot status and extended robot status topics.
      */
     void publishRobotStatus();
+
+    /*!
+     * \brief Publish sensor state topics.
+     */
+    void publishSensorStates();
 
 
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -488,9 +553,25 @@ namespace laelaps_control
      * \param msgVel  Velocity message.
      */
     void execSetVelocities(const laelaps_control::Velocity &msgVel);
+
+
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // Utilities
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Fill in ROS standard message header.
+     *
+     * \param [out] header    Message header.
+     * \param nSeqNum         Sequence number.
+     * \param strFrameId      Frame id. No frame = "0", global frame = "1".
+     */
+    void stampHeader(std_msgs::Header  &header,
+                     u32_t             nSeqNum = 0,
+                     const std::string &strFrameId = "0");
   };
 
-} // namespace hc
+} // namespace laelaps_control
 
 
 #endif // _LAELAPS_CONTROL_H

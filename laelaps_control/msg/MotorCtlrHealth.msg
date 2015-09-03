@@ -4,10 +4,10 @@
 # 
 
 # motor controller health
-string          name        # motor controller name: front rear
-float32         temp        # motor controller temperature (C)
-float32         voltage     # motor input voltage (Volts)
-uint8           alarms      # motor or'ed alarm bits (see below)
+string          name        # Motor controller name: [front, rear].
+float32         temp        # Motor controller temperature [C]
+float32         voltage     # Motor input voltage [Volts]
+uint8           alarms      # Motor or'ed alarm bits (see below)
 
 ### alarm bits 
 uint8   ALARM_NONE              = 0      # no alarms

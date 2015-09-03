@@ -1,0 +1,9 @@
+### Laelaps laelaps_control/GetIlluminance service
+#
+# Get the current ambient light illuminance sensed by the given sensor.
+#
+
+string                  name    # Name of ambient light sensor.
+---
+sensor_msgs/Illuminance sensor  # Sense illuminance plus
+                                # operating characteristics.

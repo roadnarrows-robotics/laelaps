@@ -62,6 +62,7 @@
 #include <string.h>
 
 #include <string>
+#include <vector>
 #include <map>
 
 //
@@ -76,17 +77,34 @@
 #include "actionlib/server/simple_action_server.h"
 
 //
-// ROS generated core and industrial, and laelaps messages.
+// ROS generated core and industrial messages.
 //
-#include "sensor_msgs/JointState.h"
+#include "geometry_msgs/Point.h"
+#include "geometry_msgs/Quaternion.h"
 #include "industrial_msgs/RobotStatus.h"
+#include "sensor_msgs/Illuminance.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/JointState.h"
+#include "sensor_msgs/Range.h"
 
 //
 // ROS generated Laelaps messages.
 //
+#include "laelaps_control/Caps.h"
+#include "laelaps_control/Dimensions.h"
 #include "laelaps_control/Dynamics.h"
-#include "laelaps_control/RobotStatusExtended.h"
 #include "laelaps_control/Gpio.h"
+#include "laelaps_control/IlluminanceState.h"
+#include "laelaps_control/ImuCaps.h"
+#include "laelaps_control/MotorCtlrHealth.h"
+#include "laelaps_control/MotorHealth.h"
+#include "laelaps_control/Path2D.h"
+#include "laelaps_control/Pose2DStamped.h"
+#include "laelaps_control/PowertrainCaps.h"
+#include "laelaps_control/ProductInfo.h"
+#include "laelaps_control/RangeState.h"
+#include "laelaps_control/RobotStatusExtended.h"
+#include "laelaps_control/ToFSensorCaps.h"
 #include "laelaps_control/Velocity.h"
 
 //
@@ -96,7 +114,10 @@
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
+#include "laelaps_control/GetIlluminance.h"
+#include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetProductInfo.h"
+#include "laelaps_control/GetRange.h"
 #include "laelaps_control/Go.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
@@ -122,8 +143,9 @@
 // RoadNarrows embedded laelaps library.
 //
 #include "Laelaps/laelaps.h"
-#include "Laelaps/laeXmlCfg.h"
 #include "Laelaps/laeUtils.h"
+#include "Laelaps/laeXmlCfg.h"
+#include "Laelaps/laeTraj.h"
 #include "Laelaps/laeRobot.h"
 
 //
@@ -206,10 +228,20 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::freeze,
                                           &(*this));
 
-  strSvc = "get_capabilites";
+  strSvc = "get_caps";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getCaps,
                                           &(*this));
+
+  strSvc = "get_illuminance";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getIlluminance,
+                                          &(*this));
+  strSvc = "get_imu";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getImu,
+                                          &(*this));
+
 
   strSvc = "get_product_info";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
@@ -268,33 +300,40 @@ void LaelapsControl::advertiseServices()
 }
 
 bool LaelapsControl::configGpio(ConfigGpio::Request  &req,
-                                  ConfigGpio::Response &rsp)
+                                ConfigGpio::Response &rsp)
 {
   const char *svc = "config_gpio";
   int         rc;
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK rc = m_robot.x();
+  for(size_t i = 0; i < req.gpio.size(); ++i)
+  {
+    // RDK TODO
+    // RDK rc = m_robot.configGpio(req.gpio[i].pin, req.gpio[i].state);
 
-  if( rc == LAE_OK )
-  {
-    ROS_INFO("Configured GPIO.");
-    return true;
+    if( rc == LAE_OK )
+    {
+      ROS_INFO("Configured GPIO pin %d as %s.",
+          req.gpio[i].pin, (req.gpio[i].state? "output": "input"));
+    }
+    else
+    {
+      ROS_ERROR("Service %s failed on pin %d: %s(rc=%d).",
+          svc, req.gpio[i].pin, getStrError(rc), rc);
+      return false;
+    }
   }
-  else
-  {
-    ROS_ERROR("%s failed. %s(rc=%d).", svc, getStrError(rc), rc);
-    return false;
-  }
+
+  return true;
 }
 
 bool LaelapsControl::estop(EStop::Request  &req,
-                             EStop::Response &rsp)
+                           EStop::Response &rsp)
 {
   const char *svc = "estop";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.estop();
 
@@ -308,7 +347,7 @@ bool LaelapsControl::freeze(Freeze::Request  &req,
 {
   const char *svc = "freeze";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.freeze();
 
@@ -320,21 +359,86 @@ bool LaelapsControl::freeze(Freeze::Request  &req,
 bool LaelapsControl::getCaps(GetCaps::Request  &req,
                              GetCaps::Response &rsp)
 {
-  const char *svc = "get_capabilites";
+  const char *svc = "get_caps";
+  int         rc;
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   if( !m_robot.isDescribed() )
   {
-    ROS_ERROR("%s failed: "
+    ROS_ERROR("Service %s failed: "
               "Robot description not loaded - unable to determine info.",
               svc);
     return false;
   }
 
   // RDK TODO
+  // RDK rc = m_robot.getCaps();
+  rc = LAE_OK;
  
-  return true;
+  if( rc == LAE_OK )
+  {
+    ROS_INFO("Robot capabilities retrieved.");
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed: %s(rc=%d).",
+          svc, getStrError(rc), rc);
+    return false;
+  }
+}
+
+
+bool LaelapsControl::getIlluminance(GetIlluminance::Request  &req,
+                                    GetIlluminance::Response &rsp)
+{
+  const char *svc = "get_illuminance";
+  int         rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  // RDK TODO
+  // RDK rc = m_robot.getAmbientLight(req.name, ...);
+  rc = LAE_OK;
+ 
+  if( rc == LAE_OK )
+  {
+    ROS_INFO("Ambient light sensor %s = %.1lf lux.",
+        req.name.c_str(), 0.0);
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed on sensor %s: %s(rc=%d).",
+          svc, req.name.c_str(), getStrError(rc), rc);
+    return false;
+  }
+}
+
+bool LaelapsControl::getImu(GetImu::Request  &req,
+                            GetImu::Response &rsp)
+{
+  const char *svc = "get_imu";
+  int         rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  // RDK TODO
+  // RDK rc = m_robot.getImu(req.name, ...);
+  rc = LAE_OK;
+ 
+  if( rc == LAE_OK )
+  {
+    ROS_INFO("IMU %s data.", req.name.c_str());
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed on IMU %s: %s(rc=%d).",
+          svc, req.name.c_str(), getStrError(rc), rc);
+    return false;
+  }
 }
 
 bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
@@ -345,7 +449,7 @@ bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
   int   nMajor, nMinor, nRev;
   char  s[128];
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   if( !m_robot.isDescribed() )
   {
@@ -373,35 +477,84 @@ bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
 
   rsp.i.hostname  = s;
 
+  ROS_INFO("Laelaps %d.%d.%d version.", nMajor, nMinor, nRev);
+
   return true;
+}
+
+bool LaelapsControl::getRange(GetRange::Request  &req,
+                              GetRange::Response &rsp)
+{
+  const char *svc = "get_range";
+  int         rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  // RDK TODO
+  // RDK rc = m_robot.getRange(req.name, ...);
+  rc = LAE_OK;
+ 
+  if( rc == LAE_OK )
+  {
+    ROS_INFO("Range sensor %s = %.3lf meters.",
+        req.name.c_str(), 0.0);
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed on sensor %s: %s(rc=%d).",
+          svc, req.name.c_str(), getStrError(rc), rc);
+    return false;
+  }
 }
 
 bool LaelapsControl::go(Go::Request  &req,
                         Go::Response &rsp)
 {
-  const char *svc = "go";
+  const char     *svc = "go";
+  static u32_t    seq = 0;
+  LaeMapVelocity  vel;
+  int             rc;
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  if( !m_robot.isDescribed() )
+  for(size_t i = 0; i < req.goal.names.size(); ++i)
   {
-    ROS_ERROR("%s failed: "
-              "Robot description not loaded - unable to determine info.",
-              svc);
-    return false;
+    vel[req.goal.names[i]] = req.goal.velocities[i];
   }
 
-  // RDK TODO
+  rc = m_robot.setVelocities(vel);
  
-  return true;
+  if( rc == LAE_OK )
+  {
+    stampHeader(rsp.actual.header, seq++);
+    
+    // RDK TODO get actual goal, not just copy target goal
+    rsp.actual = req.goal;
+
+    ROS_INFO("Robot velocities set.");
+    for(size_t i = 0; i < rsp.actual.names.size(); ++i)
+    {
+      ROS_INFO(" %-12s: vel=%7.3lfm/s",
+          rsp.actual.names[i].c_str(),
+          rsp.actual.velocities[i]);
+    }
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed: %s(rc=%d).",
+          svc, getStrError(rc), rc);
+    return false;
+  }
 }
 
 bool LaelapsControl::isAlarmed(IsAlarmed::Request  &req,
-                                 IsAlarmed::Response &rsp)
+                               IsAlarmed::Response &rsp)
 {
   const char *svc = "is_alarmed";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   rsp.is_alarmed = m_robot.isAlarmed();
 
@@ -418,7 +571,7 @@ bool LaelapsControl::isDescLoaded(IsDescLoaded::Request  &req,
 {
   const char *svc = "is_desc_loaded";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   rsp.is_desc_loaded = m_robot.getLaelapsDesc().isDescribed();
 
@@ -436,20 +589,35 @@ bool LaelapsControl::readGpio(ReadGpio::Request  &req,
   const char *svc = "read_gpio";
   int         rc;
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK rc = m_robot.x();
+  rsp.gpio.clear();
 
-  if( rc == LAE_OK )
+  for(size_t i = 0; i < req.pin.size(); ++i)
   {
-    ROS_INFO("Read GPIO.");
-    return true;
+    Gpio  gpio;
+
+    gpio.pin = req.pin[i];
+
+    // RDK TODO
+    // RDK rc = m_robot.readGpio(gpio.pin, gpio.state);
+
+    if( rc == LAE_OK )
+    {
+      rsp.gpio.push_back(gpio);
+
+      ROS_INFO("GPIO pin %d = %d.",
+          rsp.gpio[i].pin, rsp.gpio[i].state);
+    }
+    else
+    {
+      ROS_ERROR("Service %s failed on pin %d: %s(rc=%d).",
+          svc, gpio.pin, getStrError(rc), rc);
+      return false;
+    }
   }
-  else
-  {
-    ROS_ERROR("%s failed. %s(rc=%d).", svc, getStrError(rc), rc);
-    return false;
-  }
+
+  return true;
 }
 
 bool LaelapsControl::release(Release::Request  &req,
@@ -457,7 +625,7 @@ bool LaelapsControl::release(Release::Request  &req,
 {
   const char *svc = "release";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.release();
 
@@ -471,7 +639,7 @@ bool LaelapsControl::reloadConfig(Release::Request  &req,
 {
   const char *svc = "reload_config";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.reload();
 
@@ -481,11 +649,11 @@ bool LaelapsControl::reloadConfig(Release::Request  &req,
 }
 
 bool LaelapsControl::resetEStop(ResetEStop::Request  &req,
-                                  ResetEStop::Response &rsp)
+                                ResetEStop::Response &rsp)
 {
   const char *svc = "reset_estop";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.resetEStop();
 
@@ -495,11 +663,11 @@ bool LaelapsControl::resetEStop(ResetEStop::Request  &req,
 }
 
 bool LaelapsControl::setRobotMode(SetRobotMode::Request  &req,
-                                    SetRobotMode::Response &rsp)
+                                  SetRobotMode::Response &rsp)
 {
   const char *svc = "set_robot_mode";
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   m_robot.setRobotMode((LaeRobotMode)req.mode.val);
 
@@ -514,9 +682,7 @@ bool LaelapsControl::stop(Stop::Request  &req,
   const char *svc = "stop";
   int         rc;
 
-  ROS_DEBUG("%s", svc);
-
-  ROS_INFO("Stop");
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
   rc = m_robot.stop();
 
@@ -527,31 +693,38 @@ bool LaelapsControl::stop(Stop::Request  &req,
   }
   else
   {
-    ROS_ERROR("%s failed. %s(rc=%d).", svc, getStrError(rc), rc);
+    ROS_ERROR("Service %s failed: %s(rc=%d).", svc, getStrError(rc), rc);
     return false;
   }
 }
 
 bool LaelapsControl::writeGpio(WriteGpio::Request  &req,
-                                 WriteGpio::Response &rsp)
+                               WriteGpio::Response &rsp)
 {
   const char *svc = "write_gpio";
   int         rc;
 
-  ROS_DEBUG("%s", svc);
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK rc = m_robot.x();
+  for(size_t i = 0; i < req.gpio.size(); ++i)
+  {
+    // RDK TODO
+    // RDK rc = m_robot.configGpio(req.gpio[i].pin, req.gpio[i].state);
 
-  if( rc == LAE_OK )
-  {
-    ROS_INFO("Wrote GPIO.");
-    return true;
+    if( rc == LAE_OK )
+    {
+      ROS_INFO("Write GPIO pin %d = %d.",
+          req.gpio[i].pin, req.gpio[i].state);
+    }
+    else
+    {
+      ROS_ERROR("Service %s failed on pin %d: %s(rc=%d).",
+          svc, req.gpio[i].pin, getStrError(rc), rc);
+      return false;
+    }
   }
-  else
-  {
-    ROS_ERROR("%s failed. %s(rc=%d).", svc, getStrError(rc), rc);
-    return false;
-  }
+
+  return true;
 }
 
 
@@ -567,6 +740,23 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
   m_publishers[strPub] =
     m_nh.advertise<Dynamics>(strPub, nQueueDepth);
 
+  strPub = "illuminance_state";
+  m_publishers[strPub] =
+    m_nh.advertise<IlluminanceState>(strPub, nQueueDepth);
+
+  strPub = "imu";
+  m_publishers[strPub] =
+    m_nh.advertise<sensor_msgs::Imu>(strPub, nQueueDepth);
+
+  // RDK TODO
+  //strPub = "joint_state";
+  //m_publishers[strPub] =
+  //  m_nh.advertise<sensor_msgs::JointState>(strPub, nQueueDepth);
+
+  strPub = "range_state";
+  m_publishers[strPub] =
+    m_nh.advertise<RangeState>(strPub, nQueueDepth);
+
   strPub = "robot_status";
   m_publishers[strPub] =
     m_nh.advertise<industrial_msgs::RobotStatus>(strPub, nQueueDepth);
@@ -580,20 +770,26 @@ void LaelapsControl::publish()
 {
   publishDynamics();
   publishRobotStatus();
+  publishSensorStates();
 }
 
 void LaelapsControl::publishDynamics()
 {
   LaeRptDynamics  dynamics;
 
-  // get robot's extended joint state.
+  // get robot's dynamics
   m_robot.getDynamics(dynamics);
   
-  // update joint state message
+  // update dynamics message
   updateDynamicsMsg(dynamics, m_msgDynamics);
 
-  // publish joint state messages
+  // publish dynamics messages
   m_publishers["dynamics"].publish(m_msgDynamics);
+
+  // RDK TODO updateJointStateMsg(..., m_msgJointState);
+
+  // publish joint state messages
+  m_publishers["joint_state"].publish(m_msgJointState);
 }
 
 void LaelapsControl::publishRobotStatus()
@@ -616,10 +812,33 @@ void LaelapsControl::publishRobotStatus()
   m_publishers["robot_status_ex"].publish(m_msgRobotStatusEx);
 }
 
+void LaelapsControl::publishSensorStates()
+{
+  // RDK TODO
+
+  //m_robot.getAmbientLight(...)
+
+  // RDK TODO updateIlluminanceStateMsg(..., m_msgIlluminanceState);
+
+  m_publishers["illuminance_state"].publish(m_msgIlluminanceState);
+
+  //m_robot.getImu(...)
+
+  // RDK TODO updateImuMsg(..., m_msgImu);
+
+  m_publishers["imu"].publish(m_msgImu);
+
+  //m_robot.getRange(...)
+
+  // RDK TODO updateRangeStateMsg(..., m_msgRangeState);
+
+  m_publishers["range_state"].publish(m_msgRangeState);
+}
+
 void LaelapsControl::updateDynamicsMsg(LaeRptDynamics &dynamics,
                                        Dynamics       &msg)
 {
-#if 0 // RDK
+#if 0 // RDK TODO
   //
   // Clear previous joint state data.
   //
@@ -631,9 +850,7 @@ void LaelapsControl::updateDynamicsMsg(LaeRptDynamics &dynamics,
   //
   // Set joint state header.
   //
-  msg.header.stamp    = ros::Time::now();
-  msg.header.frame_id = "0";
-  msg.header.seq++;
+  stampHeader(msg.header, msg.header.seq+1);
 
   //
   // Set joint state state values;
@@ -655,9 +872,7 @@ void LaelapsControl::updateRobotStatusMsg(LaeRptRobotStatus &status,
   //
   // Set robot status header.
   //
-  msg.header.stamp    = ros::Time::now();
-  msg.header.frame_id = "0";
-  msg.header.seq++;
+  stampHeader(msg.header, msg.header.seq+1);
 
   //
   // Set industrial message compliant robot status values.
@@ -675,16 +890,14 @@ void LaelapsControl::updateRobotStatusMsg(LaeRptRobotStatus &status,
 void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
                                                   RobotStatusExtended &msg)
 {
-#if 0 // RDK
+#if 0 // RDK TODO
   ServoHealth sh;
   int         i;
 
   //
   // Set extended robot status header.
   //
-  msg.header.stamp    = ros::Time::now();
-  msg.header.frame_id = "0";
-  msg.header.seq++;
+  stampHeader(msg.header, msg.header.seq+1);
 
   //
   // Set laelaps message extended robot status values.
@@ -730,11 +943,13 @@ void LaelapsControl::subscribeToTopics(int nQueueDepth)
 
 void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
 {
+  const char     *topic = "set_velocities";
   LaeMapVelocity  vel;
 
-  ROS_INFO("Set velocities");
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), topic);
 
-  // load trajectory point
+  // set velocities
+  ROS_INFO("%s", topic);
   for(int i=0; i<msgVel.names.size(); ++i)
   {
     vel[msgVel.names[i]] = msgVel.velocities[i];
@@ -742,5 +957,14 @@ void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
         msgVel.names[i].c_str(), msgVel.velocities[i]);
   }
 
-  m_robot.go(vel);
+  m_robot.setVelocities(vel);
+}
+
+void LaelapsControl::stampHeader(std_msgs::Header &header,
+                                 u32_t             nSeqNum,
+                                 const string     &strFrameId)
+{
+  header.seq      = nSeqNum;
+  header.stamp    = ros::Time::now();
+  header.frame_id = strFrameId;
 }

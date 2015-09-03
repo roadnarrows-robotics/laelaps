@@ -4,16 +4,16 @@
 # 
 
 # robot dynamics
-Header                header          # standard header
-geometry_msgs/Pose2D  robot_pose      # robot 2D pose (meters, meters, radians)
-float64               robot_velocity  # robot linear velocity v (meters/second)
+Header                header          # Standard header.
+geometry_msgs/Pose2D  robot_pose      # Robot 2D pose [meters, meters, radians].
+float64               robot_velocity  # Robot linear velocity v [meters/second].
 
 # powertrain dynamics
-string[]  name                    # powertrain name: left_front right_front
-                                  #                  left_rear  right_rear
-float64[] wheel_odometer          # wheel odometer m (meters)
-float64[] wheel_linear_velocity   # wheel linear velocity v (meters/second)
-float64[] wheel_angular_velocity  # wheel angular velocity w (radians/second)
-int64[]   motor_encoder           # motor encoder position (pulses)
-int32[]   motor_speed             # motor raw speed (pulses/second)
-float32[] motor_power_elec        # motor input electrical power Pe (watts)
+string[]  name                    # Powertrain name: [left_front, right_front,
+                                  #                  left_rear, right_rear].
+float64[] wheel_odometer          # Wheel odometer [meters]
+float64[] wheel_linear_velocity   # Wheel linear velocity v [meters/second]
+float64[] wheel_angular_velocity  # Wheel angular velocity w [radians/second]
+int64[]   motor_encoder           # Motor encoder position [pulses]
+int32[]   motor_speed             # Motor raw speed [pulses/second]
+float32[] motor_power_elec        # Motor input electrical power Pe [watts]

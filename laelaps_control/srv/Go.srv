@@ -3,6 +3,6 @@
 # Set robot's wheel velocities
 #
 
-Velocity  goal_velocity       # goal velocities
+Velocity  goal    # goal velocities
 ---
-Velocity  actual_velocity     # actual achievable
+Velocity  actual  # actual achievable
