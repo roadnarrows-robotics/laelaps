@@ -7,8 +7,8 @@ uint8 pin       # GPIO pin
 uint8 state     # GPIO state or direction
 
 # Pin Ids
-uint8 X_GPIO_1 = 1  # TBD GPIO pin 1
-uint8 Y_GPIO_2 = 2  # TBD GPIO pin 2
+uint8 GPIO_PIN_MIN = 2  # GPIO minimum pin number.
+uint8 GPIO_PIN_MAX = 8  # GPIO maximum pin number.
 
 # States
 uint8 OFF = 0       # off (low)

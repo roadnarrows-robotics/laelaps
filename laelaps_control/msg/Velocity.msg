@@ -3,7 +3,8 @@
 # Powertrain velocities.
 #
 # Set powertrain target velocities. Any drives not specified remain at their
-# respective current velocities. Velocity is measured at the tire.
+# respective current velocities. Angular velocity is measured at the fixed
+# rotational drive_shaft - wheel - tire powertrain components.
 #
 
 # powertrain velocities

@@ -3,8 +3,9 @@
 # Robot 2D trajectory is as set of trajectory 2D waypoints specifying positions,
 # dynamics, and timing information.
 #
-# The pose position can be specified in some absolute frame of reference
-# (e.g. robot odometer == 0) or relative to the starting/last pose of the robot.
+# The point poses can be specified in some absolute frame of reference
+# (e.g. odometer == 0) or as a relative delta from the starting/last pose of
+# the robot. 
 #
 
 uint8 ABSOLUTE = 0      # absolute frame of reference

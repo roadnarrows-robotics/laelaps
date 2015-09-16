@@ -14,7 +14,7 @@ uint8               accel_dof # Accelerometer number of orthogonal DoFs.
 float64             accel_min # Minimum detectable acceleration [meters/s^2].
 float64             accel_max # Maximum detectable acceleration [meters/s^2].
 float64             accel_res # Accelerometer resolution [meters/s^2].
-geometry_msgs/Point accel_off # Location offset from center of robot [meters].
+geometry_msgs/Point accel_off # Location offset from center of robot [m, m, m].
 
 # Gyroscope Sensor
 uint8               gyro_dof  # Gyroscope number of orthogonal DoFs.
@@ -22,7 +22,7 @@ uint8               gyro_dof  # Gyroscope number of orthogonal DoFs.
 float64             gyro_min  # Minimum detectable rotation [radians/s].
 float64             gyro_max  # Maximum detectable rotation [radians/s].
 float64             gyro_res  # Gyroscope resolution [radians/s].
-geometry_msgs/Point gyro_off  # Location offset from center of robot [meters].
+geometry_msgs/Point gyro_off  # Location offset from center of robot [m, m, m].
 
 # Magnetometer Sensor
 uint8               mag_dof   # Magnatometer number of orthogonal DoFs.
@@ -30,4 +30,4 @@ uint8               mag_dof   # Magnatometer number of orthogonal DoFs.
 float64             mag_min   # Minimum detectable magnetic field [Tesla].
 float64             mag_max   # Maximum detectable magnetic field [Tesla].
 float64             mag_res   # Magnetometer resolution [Tesla].
-geometry_msgs/Point mag_off   # Location offset from center of robot [meters].
+geometry_msgs/Point mag_off   # Location offset from center of robot [m, m, m].

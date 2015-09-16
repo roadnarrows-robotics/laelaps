@@ -5,6 +5,7 @@
 
 # robot dynamics
 Header                header          # Standard header.
+float64               robot_odometer  # Robot odometer [meters].
 geometry_msgs/Pose2D  robot_pose      # Robot 2D pose [meters, meters, radians].
 float64               robot_velocity  # Robot linear velocity v [meters/second].
 

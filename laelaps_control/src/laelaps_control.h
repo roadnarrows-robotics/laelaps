@@ -196,14 +196,11 @@ namespace laelaps_control
     /*!
      * \brief Connect to Laelaps hardware.
      *
-     * \param strDevMotorCtrls     Motor controllers serial device name.
-     *
      * \return Returns LAE_OK of success, \h_lt 0 on failure.
      */
-    int connect(const std::string &strDevMotorCtlrs)
+    int connect()
     {
-      return strDevMotorCtlrs.empty()?  m_robot.connect():
-                                        m_robot.connect(strDevMotorCtlrs);
+      return m_robot.connect();
     }
 
     /*!

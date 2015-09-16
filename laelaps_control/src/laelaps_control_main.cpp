@@ -118,7 +118,6 @@ static int  RcvSignal = NO_SIGNAL;            ///< received 'gracefull' signal
 // Options
 //
 static char  *OptsCfgFile       = (char *)LaeEtcCfg;  ///< config file
-static char  *OptsDevMotorCtlrs = (char *)"";         ///< motor ctlr device
 
 /*!
  * \brief The package information.
@@ -172,20 +171,6 @@ static OptsInfo_T AppOptsInfo[] =
     OptsFmtStr,           // fn_fmt
     "<file>",             // arg_name
     "Laelaps top-level XML configuration file name."
-                          // opt desc
-  },
-
-  // --ctrldev
-  {
-    "ctrldev",            // long_opt
-    OPTS_NO_SHORT,        // short_opt
-    required_argument,    // has_arg
-    false,                 // has_default
-    &OptsDevMotorCtlrs,   // opt_addr
-    OptsCvtArgStr,        // fn_cvt
-    OptsFmtStr,           // fn_fmt
-    "<device>",           // arg_name
-    "Laelaps motor controllers serial device name."
                           // opt desc
   },
 
@@ -280,7 +265,7 @@ int main(int argc, char *argv[])
   //
   for(int i = 0; i < nMaxTries; ++i)
   {
-    if( (rc = laelaps.connect(OptsDevMotorCtlrs)) == LAE_OK )
+    if( (rc = laelaps.connect()) == LAE_OK )
     {
       stringstream ss;
       ss  << strNodeName << ": Connected to Laelaps.";  

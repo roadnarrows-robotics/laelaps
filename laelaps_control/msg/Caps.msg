@@ -8,9 +8,10 @@ Dimensions  robot_dim       # Full outside dimensions of the robot.
 Dimensions  base_dim        # Dimensions of robot base.
 float64     wheelbase       # Distance between centers of front-rear wheels [m].
 float64     wheeltrack      # Dist between centerlines of left-right wheels [m].
-float64     approach_angle  # Approach (and departure) angle [radians].
+float64     approach_angle  # Approach angle [radians].
                             #   The robot has front-rear symmetry, so the angles
-                            #   are identical.
+                            #   are identical on standard units.
+float64     departure_angle # Departure angle [radians].
 float64     breakover_angle # Breakover (high center) angle Beta [radians].
 
 # built-in features

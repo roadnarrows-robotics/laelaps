@@ -6,10 +6,11 @@
 # position x,y and orientation theta. No dynamics (e.g. velocities) are
 # specified.
 #
-# The poses can be specified in some absolute frame of reference (e.g.
-# odometer == 0) or relative to the starting/last pose of the robot. 
+# The poses can be specified in some absolute frame of reference
+# (e.g. odometer == 0) or as a relative delta from the starting/last pose of the
+# robot. 
 #
-# Example pseudo-path to approach a toy block:
+# Example pseudo-coded path to approach a toy block:
 #   path_name     = "toy block"
 #   frame_of_ref  = RELATIVE
 #   pose_names[0] = "turn left"
