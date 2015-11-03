@@ -116,13 +116,14 @@
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
-#include "laelaps_control/GetIlluminance.h"
 #include "laelaps_control/GetImu.h"
+#include "laelaps_control/GetImuAlt.h"
 #include "laelaps_control/GetProductInfo.h"
 #include "laelaps_control/GetRange.h"
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
+#include "laelaps_control/ReadIlluminance.h"
 #include "laelaps_control/Release.h"
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
@@ -194,7 +195,7 @@ int LaelapsControl::configure(const string &strCfgFile)
   {
     ROS_INFO("Laelaps description loaded:\n\t %s\n\t %s",
        xml.getFileName().c_str(),
-       m_robot.getLaelapsDesc().getFullProdBrief().c_str());
+       m_robot.getLaelapsDesc().getProdBrief().c_str());
     rc = LAE_OK;
   }
 
@@ -235,10 +236,6 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::getCaps,
                                           &(*this));
 
-  strSvc = "get_illuminance";
-  m_services[strSvc] = m_nh.advertiseService(strSvc,
-                                          &LaelapsControl::getIlluminance,
-                                          &(*this));
   strSvc = "get_imu";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getImu,
@@ -268,6 +265,11 @@ void LaelapsControl::advertiseServices()
   strSvc = "read_gpio";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::readGpio,
+                                          &(*this));
+
+  strSvc = "read_illuminance";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::readIlluminance,
                                           &(*this));
 
   strSvc = "release";
@@ -392,8 +394,8 @@ bool LaelapsControl::getCaps(GetCaps::Request  &req,
 }
 
 
-bool LaelapsControl::getIlluminance(GetIlluminance::Request  &req,
-                                    GetIlluminance::Response &rsp)
+bool LaelapsControl::readIlluminance(ReadIlluminance::Request  &req,
+                                     ReadIlluminance::Response &rsp)
 {
   const char *svc = "get_illuminance";
   int         rc;
@@ -466,7 +468,7 @@ bool LaelapsControl::getProductInfo(GetProductInfo::Request  &req,
   rsp.i.maj             = nMajor;
   rsp.i.min             = nMinor;
   rsp.i.rev             = nRev;
-  rsp.i.version_string  = m_robot.getVersion();
+  rsp.i.version_string  = m_robot.getVersionString();
   rsp.i.product_id      = m_robot.getProdId();
   rsp.i.product_name    = m_robot.getProdName();
   rsp.i.desc            = m_robot.getFullProdBrief();
@@ -652,7 +654,7 @@ bool LaelapsControl::setVelocities(SetVelocities::Request  &req,
     vel[req.goal.names[i]] = req.goal.velocities[i];
   }
 
-  rc = m_robot.setVelocities(vel);
+  rc = m_robot.move(vel);
  
   if( rc == LAE_OK )
   {
@@ -742,18 +744,21 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
   m_publishers[strPub] =
     m_nh.advertise<Dynamics>(strPub, nQueueDepth);
 
+#if 0 // FUTURE
   strPub = "illuminance_state";
   m_publishers[strPub] =
     m_nh.advertise<IlluminanceState>(strPub, nQueueDepth);
+#endif // FUTURE
 
   strPub = "imu";
   m_publishers[strPub] =
     m_nh.advertise<sensor_msgs::Imu>(strPub, nQueueDepth);
 
-  // RDK TODO
-  //strPub = "joint_state";
-  //m_publishers[strPub] =
-  //  m_nh.advertise<sensor_msgs::JointState>(strPub, nQueueDepth);
+#if 0 // FUTURE
+  strPub = "joint_state";
+  m_publishers[strPub] =
+    m_nh.advertise<sensor_msgs::JointState>(strPub, nQueueDepth);
+#endif // FUTURE
 
   strPub = "range_state";
   m_publishers[strPub] =
@@ -959,7 +964,7 @@ void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
         msgVel.names[i].c_str(), radToDeg(msgVel.velocities[i]));
   }
 
-  m_robot.setVelocities(vel);
+  m_robot.move(vel);
 }
 
 void LaelapsControl::stampHeader(std_msgs::Header &header,

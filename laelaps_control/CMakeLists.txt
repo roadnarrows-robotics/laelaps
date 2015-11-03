@@ -34,6 +34,7 @@ add_message_files(
     Dynamics.msg
     Gpio.msg
     IlluminanceState.msg
+    ImuAlt.msg
     ImuCaps.msg
     MotorCtlrHealth.msg
     MotorHealth.msg
@@ -56,13 +57,14 @@ add_service_files(
     EStop.srv
     Freeze.srv
     GetCaps.srv
-    GetIlluminance.srv
     GetImu.srv
+    GetImuAlt.srv
     GetProductInfo.srv
     GetRange.srv
     IsAlarmed.srv
     IsDescLoaded.srv
     ReadGpio.srv
+    ReadIlluminance.srv
     Release.srv
     ReloadConfig.srv
     ResetEStop.srv

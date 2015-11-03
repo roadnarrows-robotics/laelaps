@@ -1,4 +1,4 @@
-### Laelaps laelaps_control/GetImu service.
+### Laelaps laelaps_control/GetImuAlt service.
 #
 # Get the current Inertia Measurement Unit data.
 #
@@ -6,6 +6,6 @@
 # the latest read sensor data stored in shadow values by a background thread.
 #
 
-string          name  # Name of IMU. One of: imu
+string  name  # Name of IMU: One of: imu
 ---
-sensor_msgs/Imu imu   # IMU data.
+ImuAlt  imu   # IMU data.
