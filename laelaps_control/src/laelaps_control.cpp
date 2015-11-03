@@ -211,10 +211,12 @@ void LaelapsControl::advertiseServices()
 {
   string  strSvc;
 
+#if 0 // FUTURE MAYBE
   //strSvc = "calibrate";
   //m_services[strSvc] = m_nh.advertiseService(strSvc,
   //                                        &LaelapsControl::calibrate,
   //                                        &(*this));
+#endif // FUTURE
 
   strSvc = "config_gpio";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
@@ -236,20 +238,26 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::getCaps,
                                           &(*this));
 
+#if 0 // FUTURE
   strSvc = "get_imu";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getImu,
                                           &(*this));
+#endif // FUTURE
 
+  strSvc = "get_imu_alt";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getImuAlt,
+                                          &(*this));
+
+  strSvc = "get_range";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getRange,
+                                          &(*this));
 
   strSvc = "get_product_info";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getProductInfo,
-                                          &(*this));
-
-  strSvc = "set_velocities";
-  m_services[strSvc] = m_nh.advertiseService(strSvc,
-                                          &LaelapsControl::setVelocities,
                                           &(*this));
 
   strSvc = "is_alarmed";
@@ -290,6 +298,11 @@ void LaelapsControl::advertiseServices()
   strSvc = "set_robot_mode";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::setRobotMode,
+                                          &(*this));
+
+  strSvc = "set_velocities";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::setVelocities,
                                           &(*this));
 
   strSvc = "stop";
@@ -420,10 +433,10 @@ bool LaelapsControl::readIlluminance(ReadIlluminance::Request  &req,
   }
 }
 
-bool LaelapsControl::getImu(GetImu::Request  &req,
-                            GetImu::Response &rsp)
+bool LaelapsControl::getImuAlt(GetImuAlt::Request  &req,
+                               GetImuAlt::Response &rsp)
 {
-  const char *svc = "get_imu";
+  const char *svc = "get_imu_alt";
   int         rc;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
@@ -823,17 +836,11 @@ void LaelapsControl::publishSensorStates()
 {
   // RDK TODO
 
-  //m_robot.getAmbientLight(...)
-
-  // RDK TODO updateIlluminanceStateMsg(..., m_msgIlluminanceState);
-
-  m_publishers["illuminance_state"].publish(m_msgIlluminanceState);
-
   //m_robot.getImu(...)
 
-  // RDK TODO updateImuMsg(..., m_msgImu);
+  // RDK TODO updateImuAltMsg(..., m_msgImu);
 
-  m_publishers["imu"].publish(m_msgImu);
+  m_publishers["imu_alt"].publish(m_msgImu);
 
   //m_robot.getRange(...)
 
