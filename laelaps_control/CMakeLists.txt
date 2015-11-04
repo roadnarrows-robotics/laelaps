@@ -106,12 +106,22 @@ add_executable(laelaps_control
   src/laelaps_control.cpp
   src/laelaps_control_main.cpp)
 
+add_executable(laelaps_teleop
+  src/laelaps_teleop/laelaps_teleop.cpp
+  src/laelaps_teleop/laelaps_teleop_main.cpp)
+
 target_link_libraries(laelaps_control 
   ${rnr-laelaps_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
+target_link_libraries(laelaps_teleop 
+  ${rnr-laelaps_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
+
 add_dependencies(laelaps_control laelaps_control_gencpp)
+add_dependencies(laelaps_teleop laelaps_control_gencpp)
 
 install(
   PROGRAMS 
