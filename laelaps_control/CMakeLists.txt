@@ -125,6 +125,6 @@ add_dependencies(laelaps_teleop laelaps_control_gencpp)
 
 install(
   PROGRAMS 
-    scripts/laelaps_teleop
+    scripts/laelaps_panel
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

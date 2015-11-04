@@ -324,7 +324,7 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
 {
   string  strPub;
 
-  strPub = "/laelaps_control/set_velocity";
+  strPub = "/laelaps_control/set_velocities";
   m_publishers[strPub] =
     m_nh.advertise<laelaps_control::Velocity>(strPub, nQueueDepth);
 
@@ -335,7 +335,7 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
 
 void LaelapsTeleop::publishVelocities(double speedLeft, double speedRight)
 {
-  static double MaxRadiansPerSec = 20.0;   // RDK 
+  static double MaxRadiansPerSec = 30.0;   // RDK 
 
   double    fVelLeft, fVelRight;
   Velocity  msg;
