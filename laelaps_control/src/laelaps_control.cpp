@@ -815,7 +815,7 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
 
   strPub = "imu_state_alt";
   m_publishers[strPub] =
-    m_nh.advertise<sensor_msgs::Imu>(strPub, nQueueDepth);
+    m_nh.advertise<ImuAlt>(strPub, nQueueDepth);
 
 #if 0 // FUTURE
   strPub = "joint_state";

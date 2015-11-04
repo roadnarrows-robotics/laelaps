@@ -339,9 +339,6 @@ int main(int argc, char *argv[])
   ros::Rate loop_rate(hz);
 
   ROS_INFO("%s: Ready.", strNodeName.c_str());
-  ROS_WARN("Laelaps requires calibration:\n"
-           " -- Please put Laelaps in a safe position before calibrating.\n"
-           " -- See user manual: \"Calibrating Laelaps\" for guidance.");
 
   //
   // Main loop.
