@@ -9,7 +9,7 @@ string          name      # Motor name: [left_front, right_front
 float32         temp      # Motor temperature [C].
 float32         voltage   # Motor input voltage [Volts].
 float32         current   # Motor draw current [Amperes].
-uint8           alarms    # Motor or'ed alarm bits (see below).
+uint8           alarms    # Motor or'ed alarm and warning bits (see below).
 
 ### alarm bits 
 uint8 MOT_ALARM_NONE    = 0   # no alarms

@@ -93,6 +93,7 @@
 #include "laelaps_control/Gpio.h"
 #include "laelaps_control/IlluminanceState.h"
 #include "laelaps_control/ImuCaps.h"
+#include "laelaps_control/ImuAlt.h"
 #include "laelaps_control/MotorCtlrHealth.h"
 #include "laelaps_control/MotorHealth.h"
 #include "laelaps_control/Path2D.h"
@@ -271,11 +272,9 @@ namespace laelaps_control
     /*!
      * \brief Update robot dynamics state message from current robot dynamics.
      *
-     * \param [in]  dynamics  Robot joint state.
      * \param [out] msg       Dynamics state message.
      */
-    void updateDynamicsMsg(laelaps::LaeRptDynamics &dynamics,
-                           Dynamics                &msg);
+    void updateDynamicsMsg(Dynamics &msg);
 
     /*!
      * \brief Update robot status message from current robot status.
@@ -295,6 +294,20 @@ namespace laelaps_control
     void updateExtendedRobotStatusMsg(laelaps::LaeRptRobotStatus &status,
                                       RobotStatusExtended        &msg);
 
+    /*!
+     * \brief Update IMU alternative message from current IMU values.
+     *
+     * \param [out] msg   IMU alternative message.
+     */
+    void updateImuAltMsg(ImuAlt &msg);
+
+    /*!
+     * \brief Update range sensors state message from current range values.
+     *
+     * \param [out] msg   Range state message.
+     */
+    void updateRangeStateMsg(RangeState &msg);
+
   protected:
     ros::NodeHandle    &m_nh;     ///< the node handler bound to this instance
     double              m_hz;     ///< application nominal loop rate
@@ -311,6 +324,7 @@ namespace laelaps_control
     IlluminanceState              m_msgIlluminanceState;
                                         ///< ambient light sensors state message
     sensor_msgs::Imu              m_msgImu;         ///< IMU state message
+    ImuAlt                        m_msgImuAlt;      ///< alt IMU state message
     sensor_msgs::JointState       m_msgJointState;  ///< joint state message
     RangeState                    m_msgRangeState;
                                         ///< range sensors state message
@@ -388,6 +402,18 @@ namespace laelaps_control
      */
     bool getImu(laelaps_control::GetImu::Request  &req,
                 laelaps_control::GetImu::Response &rsp);
+
+    /*!
+     * \brief Get inertia measurement unit's latest sensed data in alternative
+     * format service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getImuAlt(laelaps_control::GetImuAlt::Request  &req,
+                   laelaps_control::GetImuAlt::Response &rsp);
 
     /*!
      * \brief Get robot product information service callback.

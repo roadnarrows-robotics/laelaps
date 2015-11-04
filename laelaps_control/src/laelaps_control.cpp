@@ -61,6 +61,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <limits>
 #include <string>
 #include <vector>
 #include <map>
@@ -95,6 +96,7 @@
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/Gpio.h"
 #include "laelaps_control/IlluminanceState.h"
+#include "laelaps_control/ImuAlt.h"
 #include "laelaps_control/ImuCaps.h"
 #include "laelaps_control/MotorCtlrHealth.h"
 #include "laelaps_control/MotorHealth.h"
@@ -233,10 +235,12 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::freeze,
                                           &(*this));
 
+#if 0 // FUTURE
   strSvc = "get_caps";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getCaps,
                                           &(*this));
+#endif // FUTURE
 
 #if 0 // FUTURE
   strSvc = "get_imu";
@@ -326,8 +330,7 @@ bool LaelapsControl::configGpio(ConfigGpio::Request  &req,
 
   for(size_t i = 0; i < req.gpio.size(); ++i)
   {
-    // RDK TODO
-    // RDK rc = m_robot.configGpio(req.gpio[i].pin, req.gpio[i].state);
+    rc = m_robot.configDigitalPin(req.gpio[i].pin, req.gpio[i].state);
 
     if( rc == LAE_OK )
     {
@@ -411,18 +414,24 @@ bool LaelapsControl::readIlluminance(ReadIlluminance::Request  &req,
                                      ReadIlluminance::Response &rsp)
 {
   const char *svc = "get_illuminance";
+
+  double      fIlluminance;
   int         rc;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK TODO
-  // RDK rc = m_robot.getAmbientLight(req.name, ...);
-  rc = LAE_OK;
+  rc = m_robot.readAmbientLight(req.name, fIlluminance);
  
   if( rc == LAE_OK )
   {
+    stampHeader(rsp.sensor.header, 0);
+
+    rsp.sensor.illuminance = fIlluminance;
+    rsp.sensor.variance    = 0;
+
     ROS_INFO("Ambient light sensor %s = %.1lf lux.",
-        req.name.c_str(), 0.0);
+        req.name.c_str(), rsp.sensor.illuminance);
+
     return true;
   }
   else
@@ -437,16 +446,26 @@ bool LaelapsControl::getImuAlt(GetImuAlt::Request  &req,
                                GetImuAlt::Response &rsp)
 {
   const char *svc = "get_imu_alt";
+  double      accel[ImuAlt::NUM_AXES];
+  double      gyro[ImuAlt::NUM_AXES];
+  double      rpy[ImuAlt::NUM_AXES];
   int         rc;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK TODO
-  // RDK rc = m_robot.getImu(req.name, ...);
-  rc = LAE_OK;
- 
+  rc = m_robot.getImu(accel, gyro, rpy);
+
   if( rc == LAE_OK )
   {
+    for(int i = 0; i < ImuAlt::NUM_AXES; ++i)
+    {
+      rsp.imu.accel[i] = accel[i];
+      rsp.imu.gyro[i]  = gyro[i];
+      rsp.imu.rpy[i]   = rpy[i];
+    }
+
+    stampHeader(rsp.imu.header, 0);
+
     ROS_INFO("IMU %s data.", req.name.c_str());
     return true;
   }
@@ -503,18 +522,49 @@ bool LaelapsControl::getRange(GetRange::Request  &req,
                               GetRange::Response &rsp)
 {
   const char *svc = "get_range";
+  string      strRadType;         // sensor radiation type
+  double      fFoV;               // sensor field of view (radians)
+  double      fBeamDir;           // sensor beam center (radians)
+  double      fMin, fMax;         // sensor min and max range (meters)
+  double      fRange;             // measured object range (meters)
   int         rc;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  // RDK TODO
-  // RDK rc = m_robot.getRange(req.name, ...);
-  rc = LAE_OK;
+  rc = m_robot.getRangeSensorProps(req.name, strRadType, fFoV, fBeamDir,
+                                      fMin, fMax);
+
+  if( rc = LAE_OK )
+  {
+    rc = m_robot.getRange(req.name, fRange);
+  }
  
   if( rc == LAE_OK )
   {
+    if( strRadType == "infrared" )
+    {
+      rsp.sensor.radiation_type = sensor_msgs::Range::INFRARED;
+    }
+    else if( strRadType == "ultrasound" )
+    {
+      rsp.sensor.radiation_type = sensor_msgs::Range::ULTRASOUND;
+    }
+    else
+    {
+      rsp.sensor.radiation_type = 0xff;
+    }
+
+    rsp.sensor.field_of_view  = fFoV;
+    rsp.sensor.min_range      = fMin;
+    rsp.sensor.max_range      = fMax;
+
+    if( (fRange < fMin) || (fRange > fMax) )
+    {
+      rsp.sensor.range = std::numeric_limits<float>::infinity();
+    }
+
     ROS_INFO("Range sensor %s = %.3lf meters.",
-        req.name.c_str(), 0.0);
+        req.name.c_str(), rsp.sensor.range);
     return true;
   }
   else
@@ -571,15 +621,16 @@ bool LaelapsControl::readGpio(ReadGpio::Request  &req,
 
   for(size_t i = 0; i < req.pin.size(); ++i)
   {
-    Gpio  gpio;
+    Gpio    gpio;
+    uint_t  val;
 
     gpio.pin = req.pin[i];
 
-    // RDK TODO
-    // RDK rc = m_robot.readGpio(gpio.pin, gpio.state);
+    rc = m_robot.readDigitalPin(gpio.pin, val);
 
     if( rc == LAE_OK )
     {
+      gpio.state = (byte_t)val;
       rsp.gpio.push_back(gpio);
 
       ROS_INFO("GPIO pin %d = %d.",
@@ -725,8 +776,7 @@ bool LaelapsControl::writeGpio(WriteGpio::Request  &req,
 
   for(size_t i = 0; i < req.gpio.size(); ++i)
   {
-    // RDK TODO
-    // RDK rc = m_robot.configGpio(req.gpio[i].pin, req.gpio[i].state);
+    rc = m_robot.writeDigitalPin(req.gpio[i].pin, req.gpio[i].state);
 
     if( rc == LAE_OK )
     {
@@ -763,7 +813,7 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
     m_nh.advertise<IlluminanceState>(strPub, nQueueDepth);
 #endif // FUTURE
 
-  strPub = "imu";
+  strPub = "imu_state_alt";
   m_publishers[strPub] =
     m_nh.advertise<sensor_msgs::Imu>(strPub, nQueueDepth);
 
@@ -795,21 +845,18 @@ void LaelapsControl::publish()
 
 void LaelapsControl::publishDynamics()
 {
-  LaeRptDynamics  dynamics;
-
-  // get robot's dynamics
-  m_robot.getDynamics(dynamics);
-  
   // update dynamics message
-  updateDynamicsMsg(dynamics, m_msgDynamics);
+  updateDynamicsMsg(m_msgDynamics);
 
   // publish dynamics messages
   m_publishers["dynamics"].publish(m_msgDynamics);
 
-  // RDK TODO updateJointStateMsg(..., m_msgJointState);
+#if 0 // FUTURE
+  updateJointStateMsg(..., m_msgJointState);
 
-  // publish joint state messages
+  // publish message
   m_publishers["joint_state"].publish(m_msgJointState);
+#endif // FUTURE
 }
 
 void LaelapsControl::publishRobotStatus()
@@ -834,57 +881,69 @@ void LaelapsControl::publishRobotStatus()
 
 void LaelapsControl::publishSensorStates()
 {
-  // RDK TODO
+  updateImuAltMsg(m_msgImuAlt);
 
-  //m_robot.getImu(...)
+  m_publishers["imu_state_alt"].publish(m_msgImuAlt);
 
-  // RDK TODO updateImuAltMsg(..., m_msgImu);
-
-  m_publishers["imu_alt"].publish(m_msgImu);
-
-  //m_robot.getRange(...)
-
-  // RDK TODO updateRangeStateMsg(..., m_msgRangeState);
+  updateRangeStateMsg(m_msgRangeState);
 
   m_publishers["range_state"].publish(m_msgRangeState);
 }
 
-void LaelapsControl::updateDynamicsMsg(LaeRptDynamics &dynamics,
-                                       Dynamics       &msg)
+void LaelapsControl::updateDynamicsMsg(Dynamics &msg)
 {
-#if 0 // RDK TODO
+  LaeRptDynamics  dynamics;
+
+  // get robot's dynamics
+  m_robot.getDynamics(dynamics);
+  
   //
-  // Clear previous joint state data.
+  // Clear previous state data.
   //
   msg.name.clear();
-  msg.position.clear();
-  msg.velocity.clear();
-  msg.effort.clear();
+  msg.wheel_odometer.clear();
+  msg.wheel_linear_velocity.clear();
+  msg.wheel_angular_velocity.clear();
+  msg.motor_encoder.clear();
+  msg.motor_speed.clear();
+  msg.motor_power_elec.clear();
 
   //
-  // Set joint state header.
+  // Set header.
   //
   stampHeader(msg.header, msg.header.seq+1);
 
   //
-  // Set joint state state values;
+  // Set robot values.
   //
-  for(int n=0; n<state.getNumPoints(); ++n)
+  // RDK msg.robot_odometer = ???
+  msg.robot_pose.x      =  dynamics.m_pose.m_x;
+  msg.robot_pose.y      =  dynamics.m_pose.m_y;
+  msg.robot_pose.theta  =  dynamics.m_pose.m_theta;
+  msg.robot_velocity    =  dynamics.m_fVelocity;
+
+  //
+  // Set powertrain values.
+  //
+  for(size_t i = 0; i < dynamics.m_vecPowertrain.size(); ++i)
   {
-    // joint state
-    msg.name.push_back(state[n].m_strName);
-    msg.position.push_back(state[n].m_fPosition);
-    msg.velocity.push_back(state[n].m_fVelocity);
-    msg.effort.push_back(state[n].m_fEffort);
+    LaePowertrain &pt = dynamics.m_vecPowertrain[i];
+
+    msg.name.push_back(pt.m_strName);
+    msg.wheel_odometer.push_back(pt.m_state.m_fOdometer);
+    msg.wheel_linear_velocity.push_back(pt.m_state.m_fVelocity);
+    msg.wheel_angular_velocity.push_back(pt.m_state.m_fVelAng);
+    msg.motor_encoder.push_back(pt.m_state.m_nEncoder);
+    msg.motor_speed.push_back(pt.m_state.m_nSpeed);
+    msg.motor_power_elec.push_back(pt.m_state.m_fPe);
   }
-#endif // RDK
 }
 
 void LaelapsControl::updateRobotStatusMsg(LaeRptRobotStatus &status,
                                           industrial_msgs::RobotStatus &msg)
 {
   //
-  // Set robot status header.
+  // Set header.
   //
   stampHeader(msg.header, msg.header.seq+1);
 
@@ -904,17 +963,19 @@ void LaelapsControl::updateRobotStatusMsg(LaeRptRobotStatus &status,
 void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
                                                   RobotStatusExtended &msg)
 {
-#if 0 // RDK TODO
-  ServoHealth sh;
   int         i;
 
+  // clear previous data
+  msg.motor_ctlr_health.clear();
+  msg.motor_health.clear();
+
   //
-  // Set extended robot status header.
+  // Set header.
   //
   stampHeader(msg.header, msg.header.seq+1);
 
   //
-  // Set laelaps message extended robot status values.
+  // Set industrial message compliant robot status values.
   //
   msg.mode.val            = status.m_eRobotMode;
   msg.e_stopped.val       = status.m_eIsEStopped;
@@ -923,21 +984,83 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
   msg.in_motion.val       = status.m_eIsInMotion;
   msg.in_error.val        = status.m_eIsInError;
   msg.error_code          = status.m_nErrorCode;
-  msg.is_calibrated.val   = status.m_eIsCalibrated;
 
-  // clear previous data
-  msg.servo_health.clear();
+  //
+  // Set extended robot status values.
+  //
+  msg.battery = status.m_fBattery;
+  msg.current = status.m_fCurrent;
+  msg.voltage = status.m_fVoltage;
+  msg.temp    = status.m_fTemperature;
 
-  for(i=0; i<status.m_vecServoHealth.size(); ++i)
+  for(size_t i = 0; i < status.m_vecCtlrHealth.size(); ++i)
   {
-    sh.servo_id = (s8_t)status.m_vecServoHealth[i].m_nServoId;
-    sh.temp     = status.m_vecServoHealth[i].m_fTemperature;
-    sh.voltage  = status.m_vecServoHealth[i].m_fVoltage;
-    sh.alarm    = (u8_t)status.m_vecServoHealth[i].m_uAlarms;
+    LaeRptMotorCtlrHealth  &h = status.m_vecCtlrHealth[i];
+    MotorCtlrHealth         health;
 
-    msg.servo_health.push_back(sh);
+    health.name     = h.m_strName;
+    health.temp     = h.m_fTemperature;
+    health.voltage  = h.m_fVoltage;
+    health.alarms   = h.m_uAlarms;
+
+    msg.motor_ctlr_health.push_back(health);
   }
-#endif // RDK
+
+  for(size_t i = 0; i < status.m_vecMotorHealth.size(); ++i)
+  {
+    LaeRptMotorHealth  &h = status.m_vecMotorHealth[i];
+    MotorHealth         health;
+
+    health.name     = h.m_strName;
+    health.temp     = h.m_fTemperature;
+    health.voltage  = h.m_fVoltage;
+    health.current  = h.m_fCurrent;
+    health.alarms   = h.m_uAlarms;
+
+    msg.motor_health.push_back(health);
+  }
+}
+
+void LaelapsControl::updateImuAltMsg(ImuAlt &msg)
+{
+  double      accel[ImuAlt::NUM_AXES];
+  double      gyro[ImuAlt::NUM_AXES];
+  double      rpy[ImuAlt::NUM_AXES];
+  int         rc;
+
+  rc = m_robot.getImu(accel, gyro, rpy);
+
+  if( rc == LAE_OK )
+  {
+    for(int i = 0; i < ImuAlt::NUM_AXES; ++i)
+    {
+      msg.accel[i] = accel[i];
+      msg.gyro[i]  = gyro[i];
+      msg.rpy[i]   = rpy[i];
+    }
+
+    stampHeader(msg.header, msg.header.seq+1);
+  }
+}
+
+void LaelapsControl::updateRangeStateMsg(RangeState &msg)
+{
+  vector<string>  names;
+  vector<double>  ranges;
+  int             rc;
+
+  rc = m_robot.getRange(names, ranges);
+
+  if( rc == LAE_OK )
+  {
+    stampHeader(msg.header, msg.header.seq+1);
+
+    for(size_t i = 0; i < names.size(); ++i )
+    {
+      msg.name.push_back(names[i]);
+      msg.range.push_back(ranges[i]);
+    }
+  }
 }
 
 
