@@ -1,0 +1,1414 @@
+#! /usr/bin/env python
+
+###############################################################################
+#
+# Package:   RoadNarrows Robotics Kuon Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/kuon
+#
+# ROS Node:  kuon_panel
+#
+# File: kuon_panel
+#
+## \file 
+##
+## $LastChangedDate: 2012-12-06 16:33:18 -0700 (Thu, 06 Dec 2012) $
+## $Rev: 330 $
+##
+## \brief Graphical panel to interface with the kuon_control node.
+##
+## \author Daniel Packard (daniel@roadnarrows.com)
+## \author Robin Knight (robin.knight@roadnarrows.com)
+##  
+## \par Copyright:
+##   (C) 2013-2014.  RoadNarrows LLC.\n
+##   (http://www.roadnarrows.com)\n
+##   All Rights Reserved
+##
+# @EulaBegin@
+# @EulaEnd@
+#
+###############################################################################
+
+import sys
+import os
+import time
+import math
+import getopt
+
+from Tkinter import *
+from Tkconstants import *
+from tkFileDialog import *
+import tkFont
+
+import roslib; roslib.load_manifest('kuon_control')
+import rospy
+
+from industrial_msgs.msg import RobotMode
+from industrial_msgs.msg import TriState
+
+from kuon_control.msg import BrakeCmd             # publish
+from kuon_control.srv import EStop                # service
+from kuon_control.srv import Freeze               # service
+from kuon_control.srv import GetProductInfo       # service
+from kuon_control.srv import IncrementGovernor    # service
+from kuon_control.msg import JointStateExtended   # subscribe
+from kuon_control.msg import MotorHealth          # message
+from kuon_control.srv import Release              # service
+from kuon_control.srv import ResetEStop           # service
+from kuon_control.msg import RobotStatusExtended  # subscribe
+from kuon_control.srv import SetGovernor          # service
+from kuon_control.msg import SlewCmd              # publish
+from kuon_control.msg import SpeedCmd             # publish
+from kuon_control.msg import Units                # message
+
+from kuon_control.Utils import *
+from kuon_control.PanelConfig import *
+from kuon_control.AboutDlg import AboutDlg
+from kuon_control.WarnDlg import WarnDlg
+
+
+# ------------------------------------------------------------------------------
+# Globals
+# ------------------------------------------------------------------------------
+
+## \brief Application version. Update as needed. 
+appVersion = '1.1.0'
+
+## \brief Image search paths.
+imagePath = [
+  "/prj/share/appkit/images",
+  "/usr/local/share/appkit/images"
+]
+
+## \brief Alarm strings.
+alarmStrings = {
+  MotorHealth.ALARM_NONE:         "ok",
+  MotorHealth.ALARM_VOLTAGE:      "V",
+  MotorHealth.ALARM_TEMP:         "T",
+  MotorHealth.ALARM_COMM:         "comm",
+}
+
+## \brief Common foreground colors.
+fgColors = {
+  'normal':   'black',
+  'ok':       '#008800',
+  'focus':    '#0000aa',
+  'warning':  '#aa6600',
+  'error':    '#cc0000'
+}
+
+# See RS160DControl.h
+RS160D_MOTOR_SPEED_MAX = 249.0
+
+
+# ------------------------------------------------------------------------------
+# Class window
+# ------------------------------------------------------------------------------
+
+##
+## \brief Window class supporting application.
+##
+class window(Frame):
+  #
+  ## \brief Constructor.
+  ##
+  ## \param master  Window parent master widget.
+  ## \param cnf     Configuration dictionary.
+  ## \param kw      Keyword options.
+  #
+  def __init__(self, master=None, cnf={}, **kw):
+    # intialize window data
+    kw = self.initData(kw)
+
+    # publish speed command
+    self.m_pub_speed_cmd = rospy.Publisher("kuon_control/speed_cmd", SpeedCmd)
+
+    self.m_pub_brake_cmd = rospy.Publisher("kuon_control/brake_cmd", BrakeCmd)
+
+    Frame.__init__(self, master=master, cnf=cnf, **kw)
+    self.master.title("Kuon Control Panel")
+    self.grid(row=0, column=0, padx=5, pady=5)
+
+    # craete and show widgets
+    self.createWidgets()
+
+  #
+  ## \brief Initialize class state data.
+  ##
+  ## Any keywords for this application specific window that are not supported 
+  ## by the Frame Tkinter class must be removed.
+  ##
+  ## \param kw      Keyword options.
+  ##
+  ## \return Modified keywords sans this specific class.
+  #
+  def initData(self, kw):
+    self.m_bHasJointPanel = False # joint state panel [not] created 
+                                  # application configuration
+    self.m_config         = ConfigDlg.ConfigDft
+    self.m_icons          = {}    # must keep loaded icons referenced
+    self.m_wBttn          = {}    # button widgets
+    self.m_keysFewMoves   = []    # gui button keys depending on calibration
+    self.m_keysNoMoves    = []    # gui button keys depending on robot mode
+    self.m_robotStatus    = {}    # robot status widgets, variables, and values
+    self.m_robotJoint     = {}    # robot joint state widgets, variables, etc.
+    self.m_doCfg          = True  # auto-configure when connected to robot
+
+    if kw.has_key('config'):
+      self.m_config = kw['config']
+      del kw['config']
+    if kw.has_key('pub_joint_move_cb'):
+      self.cbMoveRobot = kw['pub_joint_move_cb']
+      del kw['pub_joint_move_cb']
+
+    return kw
+
+  #
+  ## \brief Create gui widgets with supporting data and show.
+  #
+  def createWidgets(self):
+    self.m_imageLoader = ImageLoader(py_pkg='kuon_control.images',
+                                      image_paths=imagePath)
+    self.createHeading()
+    self.createLeftButtons()
+    self.createCenterPanel()
+    self.createRightButtons()
+    self.createStatusBar()
+    self.updateButtonState(self.m_keysFewMoves, 'disabled')
+
+  #
+  ## \brief Create top gui heading.
+  #
+  def createHeading(self):
+    # rn logo
+    w = Label(self)
+    self.m_icons['rn_logo'] = self.m_imageLoader.load("RNLogo48.png");
+    if self.m_icons['rn_logo']:
+      w['image'] = self.m_icons['rn_logo']
+    else:
+      w['text'] = 'rn'
+      w['anchor'] = W
+      w['width'] = 5
+    w.grid(row=0, column=0, sticky=W)
+    
+    # top heading
+    w = Label(self)
+    w['font']   = ('Helvetica', 16)
+    w['text']   = 'Kuon Control Panel'
+    w['anchor'] = CENTER
+    w.grid(row=0, column=1, sticky=E+W)
+
+    # kuon logo
+    w = Label(self)
+    self.m_icons['kuon_logo'] = \
+        self.m_imageLoader.load("icons/icon_kuon_logo.png");
+    if self.m_icons['kuon_logo']:
+      w['image'] = self.m_icons['kuon_logo']
+      w['anchor'] = E
+    else:
+      w['text'] = 'kuon'
+      w['anchor'] = E
+      w['width'] = 5
+    w.grid(row=0, column=2, sticky=E)
+    
+  #
+  ## \brief Create gui left hand side buttons.
+  #
+  def createLeftButtons(self):
+    wframe = Frame(self)
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=1, column=0, padx=1, pady=3, sticky=N+W+E)
+
+    row = 0
+
+    # move foward
+    w = self.createButton(wframe, "Forward", "icons/icon_kuon_forward.png",
+                            self.kuonMoveForward)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('forward')
+
+    # move backward
+    row += 1
+    w = self.createButton(wframe, "Back", "icons/icon_kuon_back.png",
+                            self.kuonMoveBackward)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('back')
+
+    # spin left
+    row += 1
+    w = self.createButton(wframe, "Spin\nLeft", "icons/icon_kuon_spin_left.png",
+                            self.kuonSpinLeft)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('spin_left')
+
+    # spin right
+    row += 1
+    w = self.createButton(wframe, "Spin\nRight",
+                            "icons/icon_kuon_spin_right.png",
+                            self.kuonSpinRight)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('spin_right')
+
+    # stop 
+    row += 1
+    w = self.createButton(wframe, "Stop",
+                                  "icons/icon_kuon_brake.png",
+                                  self.kuonStop)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('stop')
+
+    ## specify move
+    #w = self.createButton(wframe, "Specify\nMove",
+    #                              "icons/icon_kuon_in_motion.png",
+    #                              self.specifyMove)
+    #w.grid(row=row, column=0, sticky=N+E+W)
+    #self.m_keysNoMoves.append('specify_move')
+
+  #
+  ## \brief Create robot status and joint state center panel.
+  #
+  def createCenterPanel(self):
+    self.m_wPanelFrame = Frame(self)
+    self.m_wPanelFrame['borderwidth'] = 2
+    self.m_wPanelFrame['relief'] = 'ridge'
+    self.m_wPanelFrame.grid(row=1, column=1, padx=1, pady=3, sticky=N+W+E)
+
+    self.createRobotStatusPanel(self.m_wPanelFrame, 0)
+    self.createJointStatePanel(self.m_wPanelFrame, 1)
+
+  #
+  ## \brief Create robot status upper center panel.
+  ##
+  ## \param parent  Parent widget.
+  ## \param row     Row in parent widget.
+  #
+  def createRobotStatusPanel(self, parent, row):
+    wframe = LabelFrame(parent, text='Robot Status')
+    wframe['font'] =('Helvetica', 12)
+    wframe['fg'] = fgColors['focus']
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=row, column=0, padx=1, pady=3, sticky=N+W+E)
+
+    width = 8
+    row   = 0
+    col   = 0
+
+    # robot mode field label
+    w = Label(wframe)
+    w['text']     = 'Mode: '
+    w['justify']  = RIGHT
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=W)
+
+    col += 1
+
+    # robot mode field
+    var = StringVar()
+    text, color = self.toRobotMode(RobotMode.AUTO)
+    var.set(text)
+    w = Entry(wframe)
+    w['borderwidth'] = 2
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['textvar']  = var
+    w['fg']       = color
+    w['justify']  = LEFT
+    w['state']    = 'readonly'
+    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+    d = {'raw': RobotMode.AUTO, 'var': var, 'w': w}
+    self.m_robotStatus['mode'] = d
+
+    col += 1
+
+    # governor field label
+    w = Label(wframe)
+    w['text']     = 'Governor: '
+    w['justify']  = RIGHT
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=W)
+
+    col += 1
+
+    # governor field
+    var = StringVar()
+    text, color = self.toPercent(0.0);
+    var.set(text)
+    w = Entry(wframe)
+    w['borderwidth'] = 2
+    w['relief']   = 'flat'
+    w['width']    = 7
+    w['textvar']  = var
+    w['fg']       = color
+    w['justify']  = LEFT
+    w['state']    = 'readonly'
+    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+    d = {'raw': 0.0, 'var': var, 'w': w}
+    self.m_robotStatus['governor'] = d
+
+    col += 1
+
+    spacer = Label(wframe, text=' ', width=1)
+    spacer.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
+
+    col += 1
+
+    wframe = Frame(wframe)
+    wframe['borderwidth'] = 0
+    wframe['relief'] = 'flat'
+    wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+E)
+
+    self.m_icons['led_dark']  = \
+        self.m_imageLoader.load("icons/icon_led_dark_16.png")
+    self.m_icons['led_green'] = \
+        self.m_imageLoader.load("icons/icon_led_green_16.png")
+    self.m_icons['led_red']   = \
+        self.m_imageLoader.load("icons/icon_led_red_16.png")
+
+    row = 0
+    col = 0
+
+    # motors powered status
+    w = Label(wframe)
+    w['text']     = 'Motors'
+    w['width']    = width
+    w['justify']  = RIGHT
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=E+W)
+    d = {'raw': None, 'var': None, 'w': w}
+    self.m_robotStatus['motors_label'] = d
+
+    col += 1
+
+    # motors icon
+    w = Label(wframe)
+    w['image'] = self.m_icons['led_dark']
+    w['justify'] = LEFT
+    w.grid(row=row, column=col, sticky=W+E)
+    d = {'raw': TriState.OFF, 'var': None, 'w': w}
+    self.m_robotStatus['motors_led'] = d
+
+    col += 1
+
+    # moving status
+    w = Label(wframe)
+    w['text']     = 'Moving'
+    w['width']    = width
+    w['justify']  = RIGHT
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=E+W)
+    d = {'raw': None, 'var': None, 'w': w}
+    self.m_robotStatus['moving_label'] = d
+
+    col += 1
+
+    # moving icon
+    w = Label(wframe)
+    w['image'] = self.m_icons['led_dark']
+    w['justify'] = LEFT
+    w.grid(row=row, column=col, sticky=W+E)
+    d = {'raw': TriState.OFF, 'var': None, 'w': w}
+    self.m_robotStatus['moving_led'] = d
+
+    col += 1
+
+    # robot alarms status
+    w = Label(wframe)
+    w['text']     = 'Alarms'
+    w['width']    = width
+    w['justify']  = RIGHT
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=E+W)
+    d = {'raw': None, 'var': None, 'w': w}
+    self.m_robotStatus['alarms_label'] = d
+
+    col += 1
+
+    # alarms icon
+    w = Label(wframe)
+    w['image'] = self.m_icons['led_dark']
+    w['justify'] = LEFT
+    w.grid(row=row, column=col, sticky=W+E)
+    d = {'raw': TriState.OFF, 'var': None, 'w': w}
+    self.m_robotStatus['alarms_led'] = d
+
+    col += 1
+
+    # robot estop status
+    w = Label(wframe)
+    w['text']     = 'EStop'
+    w['width']    = width
+    w['justify']  = RIGHT
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=E)
+    d = {'raw': None, 'var': None, 'w': w}
+    self.m_robotStatus['estop_label'] = d
+
+    col += 1
+
+    # estop icon
+    w = Label(wframe)
+    w['image'] = self.m_icons['led_dark']
+    w['justify'] = LEFT
+    w.grid(row=row, column=col, sticky=E)
+    d = {'raw': TriState.OFF, 'var': None, 'w': w}
+    self.m_robotStatus['estop_led'] = d
+
+  #
+  ## \brief Create joint state lower center panel headers.
+  ##
+  ## \param parent  Parent widget
+  ## \param row     Row in parent widget.
+  #
+  def createJointStatePanel(self, parent, row):
+    wframe = LabelFrame(parent, text='Motor State')
+    wframe['font'] =('Helvetica', 12)
+    wframe['fg'] = fgColors['focus']
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=row, column=0, padx=1, pady=3, sticky=N+W+E)
+    self.m_wJointStateFrame = wframe
+
+    helv  = tkFont.Font(family="Helvetica",size=10,weight="bold")
+    padx  = 10
+    pady  = 3
+    row   = 0
+    col   = 0
+
+    # Center top-down view
+    self.m_icons['kuon_top_down'] = \
+        self.m_imageLoader.load("KuonTopDown300.png")
+
+    w = Canvas(wframe, width=300, height=300)
+    w.grid(row=0, column=1, rowspan=2, padx=0, pady=0, sticky=E+W)
+
+    if self.m_icons['kuon_top_down'] is not None:
+      w.create_image(150, 150, image=self.m_icons['kuon_top_down'])
+
+    padx = 15
+
+    # Left-Front motor/wheel/tire
+    wsubframe = Frame(wframe);
+    wsubframe['borderwidth'] = 0
+    wsubframe['relief'] = 'flat'
+    wsubframe['height'] = 190
+    wsubframe.grid(row=0, column=0, padx=padx, pady=0, sticky=N+W+E)
+    wsubframe.grid_propagate(0)
+
+    self.createMotorSubpanel(wsubframe, 'left_front', True)
+
+    # Left-Rear motor/wheel/tire
+    wsubframe = Frame(wframe);
+    wsubframe['borderwidth'] = 0
+    wsubframe['relief'] = 'flat'
+    wsubframe.grid(row=1, column=0, padx=padx, pady=0, sticky=N+W+E)
+
+    self.createMotorSubpanel(wsubframe, 'left_rear', True)
+
+    # Right-Front motor/wheel/tire
+    wsubframe = Frame(wframe);
+    wsubframe['borderwidth'] = 0
+    wsubframe['relief'] = 'flat'
+    wsubframe.grid(row=0, column=2, padx=padx, pady=0, sticky=N+W+E)
+
+    self.createMotorSubpanel(wsubframe, 'right_front', False)
+
+    # Right-Rear motor/wheel/tire
+    wsubframe = Frame(wframe);
+    wsubframe['borderwidth'] = 0
+    wsubframe['relief'] = 'flat'
+    wsubframe.grid(row=1, column=2, padx=padx, pady=0, sticky=N+W+E)
+
+    self.createMotorSubpanel(wsubframe, 'right_rear', False)
+
+  #
+  ## \brief Create joint state lower center panel state.
+  ##
+  ## \param wframe    Frame to add labels and fields.
+  ## \param jointName Name of joint (motor)
+  ## \param onLeft    Labeling is [not] on the left.
+  #
+  def createMotorSubpanel(self, wframe, jointName, onLeft):
+
+    self.m_robotJoint[jointName] = {}
+
+    if onLeft:
+      prefix    = ''
+      postfix   = ':'
+      colLabel  = 0
+      colField  = 1
+      justLabel = RIGHT
+    else:
+      prefix    = '  :'
+      postfix   = ''
+      colLabel  = 1
+      colField  = 0
+      justLabel = LEFT
+
+    width = 7
+    row   = 0
+
+    # spacer
+    spacer = Label(wframe, text=' ', width=width)
+    spacer.grid(row=row, column=0, padx=0, pady=0, sticky=W+E)
+
+    row += 1
+
+    # speed field label
+    w = Label(wframe)
+    w['text']     = prefix + 'Speed' + postfix
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['justify']  = justLabel
+    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
+
+    # speed field
+    var = StringVar()
+    text, color = self.toPercent(0.0);
+    var.set(text)
+    w = Entry(wframe)
+    w['borderwidth'] = 2
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['textvar']  = var
+    w['fg']       = color
+    w['justify']  = RIGHT
+    w['state']    = 'readonly'
+    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
+
+    d = {'raw': 0.0, 'var': var, 'w': w}
+
+    self.m_robotJoint[jointName]['speed'] = d
+
+    row += 1
+
+    # brake field label
+    w = Label(wframe)
+    w['text']     = prefix + 'Brake' + postfix
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['justify']  = justLabel
+    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
+
+    # brake field
+    var = StringVar()
+    text, color = self.toPercent(0.0);
+    var.set(text)
+    w = Entry(wframe)
+    w['borderwidth'] = 2
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['textvar']  = var
+    w['fg']       = color
+    w['justify']  = RIGHT
+    w['state']    = 'readonly'
+    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
+
+    d = {'raw': 0.0, 'var': var, 'w': w}
+
+    self.m_robotJoint[jointName]['brake'] = d
+
+    row += 1
+
+    # slew field label
+    w = Label(wframe)
+    w['text']     = prefix + 'Slew' + postfix
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['justify']  = justLabel
+    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
+
+    # slew field
+    var = StringVar()
+    text, color = self.toPercent(0.0);
+    var.set(text)
+    w = Entry(wframe)
+    w['borderwidth'] = 2
+    w['relief']   = 'flat'
+    w['width']    = width
+    w['textvar']  = var
+    w['fg']       = color
+    w['justify']  = RIGHT
+    w['state']    = 'readonly'
+    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
+
+    d = {'raw': 0.0, 'var': var, 'w': w}
+
+    self.m_robotJoint[jointName]['slew'] = d
+
+    
+  #
+  ## \brief Create gui right hand side buttons.
+  #
+  def createRightButtons(self):
+    wframe = Frame(self)
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=1, column=2, padx=1, pady=3, sticky=N+W+E)
+
+    row = 0;
+
+    # estop
+    w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png", self.estop,
+                                  fg='red')
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_icons['estop_reset'] = \
+        self.m_imageLoader.load("icons/icon_estop_reset.png")
+
+    # freeze
+    row += 1
+    w = self.createButton(wframe, "Park",
+                                  "icons/icon_stop.png", self.freeze)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('park')
+
+    # release
+    row += 1
+    w = self.createButton(wframe, "Neutral",
+                                  "icons/icon_pause.png", self.release)
+    w.grid(row=row, column=0, sticky=N+E+W)
+    self.m_keysNoMoves.append('neutral')
+
+    # clear alarms
+    #row += 1
+    #w = self.createButton(wframe, "Clear\nAlarms",
+    #                              "icons/icon_alarm.png", self.clearAlarms)
+    #w.grid(row=3, column=0, sticky=N+E+W)
+    #self.m_keysNoMoves.append('clear_alarms')
+
+    # settings
+    row += 1
+    w = self.createButton(wframe, "Settings",
+                                 "icons/icon_settings.png", self.settings)
+    w.grid(row=row, column=0, sticky=N+E+W)
+
+    # info
+    row += 1
+    w = self.createButton(wframe, "About",
+                                  "icons/icon_info.png", self.about)
+    w.grid(row=row, column=0, sticky=N+E+W)
+
+    # quit
+    row += 1
+    w = self.createButton(wframe, "Quit", "icons/icon_exit.png", self.destroy,
+                                  fg='red')
+    w.grid(row=row, column=0, sticky=N+E+W)
+
+  #
+  ## \brief Create gui status bar at bottom of gui window.
+  #
+  def createStatusBar(self):
+    wframe = Frame(self)
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=2, column=0, columnspan=3, padx=1, pady=3, sticky=N+E+W+S)
+
+    self.m_varStatus = StringVar()
+    self.m_varStatus.set("")
+    self.m_wStatusBar = Entry(wframe)
+    self.m_wStatusBar['width']    = wframe['width']
+    self.m_wStatusBar['relief']   = 'flat'
+    self.m_wStatusBar['textvar']  = self.m_varStatus
+    self.m_wStatusBar['fg']       = fgColors['normal']
+    self.m_wStatusBar['state']    = 'readonly'
+    self.m_wStatusBar.grid(row=0, column=0, padx=3, pady=3, sticky=N+E+W+S)
+
+  #
+  ## \brief Update button activation states.
+  #
+  def updateButtonState(self, keys, state):
+    for key in keys:
+      self.m_wBttn[key]['state'] = state
+
+  #
+  ## \brief Create button.
+  ##
+  ## \param parent    Parent widget.
+  ## \param text      Button text.
+  ## \param imagefile Image file name. None for no image.
+  ## \param command   Callback for button push.
+  ## \param fg        Foreground text color.
+  ##
+  ## \return Button widget.
+  #
+  def createButton(self, parent, text, imagefile, command, fg='black'):
+    key = str.lower(text.replace("\n", "_"))
+    self.m_icons[key] = self.m_imageLoader.load(imagefile)
+    w = Button(parent)
+    w['text']     = text
+    if self.m_icons[key]:
+      w['image']    = self.m_icons[key]
+      w['compound'] = LEFT
+      w['padx']     = 0
+      w['pady']     = 0
+      w['anchor']   = W
+      w['width']    = 105
+    else:
+      w['anchor']   = CENTER
+      w['width']    = 10
+    w['fg']       = fg
+    w['command']  = command
+    self.m_wBttn[key] = w
+    return self.m_wBttn[key]
+
+  #
+  ## \brief Destroy window callback.
+  #
+  def destroy(self):
+    self.quit()
+
+  #
+  ## \brief Move forward
+  #
+  def kuonMoveForward(self):
+    self.showInfo("Moving forward.")
+    self.resetBrake()
+    cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
+    cmd.left_motors  = 0.20;
+    cmd.right_motors = 0.20;
+    self.m_pub_speed_cmd.publish(cmd)
+  
+  #
+  ## \brief Move backward.
+  #
+  def kuonMoveBackward(self):
+    self.showInfo("Moving back.")
+    self.resetBrake()
+    cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
+    cmd.left_motors  = -0.20;
+    cmd.right_motors = -0.20;
+    self.m_pub_speed_cmd.publish(cmd)
+  
+  #
+  ## \brief Spin left.
+  #
+  def kuonSpinLeft(self):
+    self.showInfo("Spinning left.")
+    self.resetBrake()
+    cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
+    cmd.left_motors  = -0.20;
+    cmd.right_motors = 0.20;
+    self.m_pub_speed_cmd.publish(cmd)
+  
+  #
+  ## \brief Spin right.
+  #
+  def kuonSpinRight(self):
+    self.showInfo("Spinning right.")
+    self.resetBrake()
+    cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
+    cmd.left_motors  = 0.20;
+    cmd.right_motors = -0.20;
+    self.m_pub_speed_cmd.publish(cmd)
+  
+  #
+  ## \brief Brake to stop.
+  #
+  def kuonStop(self):
+    self.resetBrake()
+    cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
+    cmd.left_motors  = 0.0;
+    cmd.right_motors = 0.0;
+    self.m_pub_speed_cmd.publish(cmd)
+    self.showInfo("Stopped.")
+  
+  #
+  ## \brief Specify move button callback.
+  #
+  def specifyMove(self):
+    pass
+  
+  #
+  ## \brief Reset brake to configuration value.
+  ## 
+  ## Various commands can override the value such as estop, freeze, and 
+  ## release.
+  ##
+  def resetBrake(self):
+    if self.m_robotStatus['governor']['raw'] != self.m_config['governor']:
+      cmd = BrakeCmd()
+      cmd.brake = self.m_config['governor']
+      self.m_pub_brake_cmd.publish(cmd)
+
+  #
+  ## \brief (Reset) emergency stop button callback.
+  #
+  def estop(self):
+    if not self.m_robotStatus['estop_led']['raw']:
+      self.showResetEStop()
+      try:
+        rospy.wait_for_service("kuon_control/estop", timeout=1)
+      except rospy.ROSException, e:
+        self.showError('Emergency stop: ' + e.message + '.')
+        self.showEStop()
+        return
+      try:
+        estop = rospy.ServiceProxy('kuon_control/estop', EStop)
+        estop()
+      except rospy.ServiceException, e:
+        self.showError("Emergency stop request failed: %s." % (e.message))
+        self.showEStop()
+        return
+      self.showError("Kuon emergency stopped.")
+    else:
+      self.showEStop()
+      try:
+        rospy.wait_for_service("kuon_control/reset_estop", timeout=1)
+      except rospy.ROSException, e:
+        self.showError('Reset emergency stop: ' + e.message + '.')
+        self.showResetEStop()
+        return
+      try:
+        reset_estop = rospy.ServiceProxy('kuon_control/reset_estop',
+                                          ResetEStop)
+        reset_estop()
+      except rospy.ServiceException, e:
+        self.showError("Reset emergency stop request failed: %s." % (e.message))
+        self.showResetEStop()
+        return
+      self.showInfo("Kuon emergency stop has been reset.")
+  
+  #
+  ## \brief Park kuon button callback.
+  #
+  def freeze(self):
+    try:
+      rospy.wait_for_service("kuon_control/freeze", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('Freeze: ' + e.message + '.')
+      return
+    try:
+      freeze = rospy.ServiceProxy('kuon_control/freeze', Freeze)
+      freeze()
+    except rospy.ServiceException, e:
+      self.showError("Freeze request failed: %s." % (e.message))
+      return
+    self.showInfo("Motors fully braked.")
+
+  #
+  ## \brief Release kuon button callback.
+  #
+  def release(self):
+    try:
+      rospy.wait_for_service("kuon_control/release", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('Release: ' + e.message + '.')
+      return
+    try:
+      release = rospy.ServiceProxy('kuon_control/release', Release)
+      release()
+    except rospy.ServiceException, e:
+      self.showError("Release request failed: %s." % (e.message))
+      return
+    self.showInfo("Motors released.")
+
+  #
+  ## \brief Show estop button.
+  #
+  def showEStop(self):
+    self.m_wBttn['estop']['image'] = self.m_icons['estop']
+    self.m_wBttn['estop']['text']   = "ESTOP"
+    self.m_wBttn['estop']['fg']     = fgColors['error']
+    self.update_idletasks()
+
+  #
+  ## \brief Show reset estop button.
+  #
+  def showResetEStop(self):
+    self.m_wBttn['estop']['image']  = self.m_icons['estop_reset']
+    self.m_wBttn['estop']['text']   = "Reset\nESTOP"
+    self.m_wBttn['estop']['fg']     = fgColors['normal']
+    self.update_idletasks()
+
+  #
+  ## \brief Clear alarms button callback.
+  #
+  def clearAlarms(self):
+    try:
+      rospy.wait_for_service("kuon_control/clear_alarms", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('Clear alarms: ' + e.message + '.')
+      return
+    try:
+      clear_alarms = rospy.ServiceProxy('kuon_control/clear_alarms',
+                                          ClearAlarms)
+      clear_alarms()
+    except rospy.ServiceException, e:
+      self.showError("Clear alarms request failed: %s." % (e.message))
+      return
+    self.showInfo("Alarms cleared.")
+  
+  #
+  ## \brief Set governor.
+  #
+  def setGovernor(self, governor):
+    print 'rdk', governor
+    try:
+      rospy.wait_for_service("kuon_control/set_governor", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('SetGovernor: ' + e.message + '.')
+      return
+    try:
+      set_governor = rospy.ServiceProxy('kuon_control/set_governor',
+          SetGovernor)
+      set_governor(governor)
+    except rospy.ServiceException, e:
+      self.showError("SetGovernor request failed: %s." % (e.message))
+      return
+    self.showInfo("Governor set.")
+
+  #
+  ## \brief Open settings dialog button callback.
+  #
+  def settings(self):
+    dlg = ConfigDlg(master=self, config=self.m_config)
+    self.m_config = dlg.m_config
+    if dlg.m_saved:
+      self.showInfo("Configuration saved to %s" % (dlg.m_filename))
+      self.setGovernor(self.m_config['governor'])
+  
+  #
+  ## \brief Show about dialog button callback.
+  #
+  def about(self):
+    prodInfo = None
+    try:
+      rospy.wait_for_service("kuon_control/get_product_info", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('Get product info: ' + e.message + '.')
+    else:
+      try:
+        get_product_info = rospy.ServiceProxy(
+                                          'kuon_control/get_product_info',
+                                          GetProductInfo)
+        rsp = get_product_info()
+        prodInfo = rsp.i
+      except rospy.ServiceException, e:
+        self.showError("Get product info request failed: %s." % (e.message))
+    dlg = AboutDlg(master=self, info=prodInfo, app_ver=appVersion)
+  
+  #
+  ## \brief Update robot status.
+  ##
+  ## \param status  Robot status extended message.
+  #
+  def updateRobotStatus(self, status):
+    if self.m_doCfg:
+      self.m_doCfg = False;
+      self.setGovernor(self.m_config['governor'])
+    self.showRobotStatus(status)
+
+  #
+  ## \brief Update joint state.
+  ##
+  ## \param wheels Wheel state message.
+  #
+  def updateWheelStates(self, wheels):
+    # no joints
+    if len(wheels.name) == 0:
+      return
+    self.showJointStates(wheels)
+
+  #
+  ## \brief Show robot status.
+  ##
+  ## \param status  Robot status extended message.
+  #
+  def showRobotStatus(self, status):
+    if status.mode.val == RobotMode.MANUAL or \
+      status.e_stopped.val == TriState.TRUE:
+      bNoMoves = True
+    else:
+      bNoMoves = False
+
+    key = 'mode'
+    if self.m_robotStatus[key]['raw'] != status.mode.val:
+      text, fg = self.toRobotMode(status.mode.val)
+      self.m_robotStatus[key]['raw'] = status.mode.val
+      self.showEntry(self.m_robotStatus[key]['w'],
+                     self.m_robotStatus[key]['var'], text, fg)
+      if bNoMoves:
+        state = 'disabled'
+      else:
+        state = 'normal'
+      self.updateButtonState(self.m_keysNoMoves, state)
+
+    key = 'governor'
+    if self.m_robotStatus[key]['raw'] != status.governor:
+      text, fg = self.toPercent(status.governor)
+      self.m_robotStatus[key]['raw'] = status.governor
+      self.showEntry(self.m_robotStatus[key]['w'],
+                     self.m_robotStatus[key]['var'], text, fg)
+
+    key = 'motors_led'
+    if self.m_robotStatus[key]['raw'] != status.drives_powered.val:
+      self.m_robotStatus[key]['raw'] = status.drives_powered.val
+      if status.drives_powered.val == TriState.ON:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_green'] 
+      else:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+
+    key = 'moving_led'
+    if self.m_robotStatus[key]['raw'] != status.in_motion.val:
+      self.m_robotStatus[key]['raw'] = status.in_motion.val
+      if status.in_motion.val == TriState.ON:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_green'] 
+      else:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+
+    key = 'alarms_led'
+    if self.m_robotStatus[key]['raw'] != status.in_error.val:
+      self.m_robotStatus[key]['raw'] = status.in_error.val
+      if status.in_error.val == TriState.TRUE:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
+      else:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+
+    key = 'estop_led'
+    if self.m_robotStatus[key]['raw'] != status.e_stopped.val:
+      self.m_robotStatus[key]['raw'] = status.e_stopped.val
+      if status.e_stopped.val == TriState.TRUE:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
+      else:
+        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+      if bNoMoves:
+        state = 'disabled'
+      else:
+        state = 'normal'
+      self.updateButtonState(self.m_keysNoMoves, state)
+
+  #
+  ## \brief Show joint state.
+  ##
+  ## \param joint   Joint (motor/wheel) state message.
+  #
+  def showJointStates(self, joint):
+    for i in range(0, len(joint.name)):
+      name = joint.name[i]
+      if not self.m_robotJoint.has_key(name):
+        continue
+
+      key = 'speed'
+      val = joint.speed[i]
+      if self.m_robotJoint[name][key]['raw'] != val:
+        text, fg = self.toPercent(val/RS160D_MOTOR_SPEED_MAX);
+        self.showEntry(self.m_robotJoint[name][key]['w'],
+                     self.m_robotJoint[name][key]['var'], text, fg)
+        self.m_robotJoint[name][key]['raw'] = val
+
+      key = 'brake'
+      val = joint.brake[i]
+      if self.m_robotJoint[name][key]['raw'] != val:
+        text, fg = self.toPercent(val)
+        self.showEntry(self.m_robotJoint[name][key]['w'],
+                     self.m_robotJoint[name][key]['var'], text, fg)
+        self.m_robotJoint[name][key]['raw'] = val
+
+      key = 'slew'
+      val = joint.slew[i]
+      if self.m_robotJoint[name][key]['raw'] != val:
+        text, fg = self.toPercent(val)
+        self.showEntry(self.m_robotJoint[name][key]['w'],
+                     self.m_robotJoint[name][key]['var'], text, fg)
+        self.m_robotJoint[name][key]['raw'] = val
+
+  #
+  ## \brief Show servo health.
+  ##
+  ## \param health  Servo health message.
+  #
+  def showServoHealth(self, health):
+    pass
+
+  #
+  ## \brief Show information message on status bar.
+  ##
+  ## \param msg   Info message string.
+  #
+  def showInfo(self, msg):
+    self.m_wStatusBar["state"] = "normal"
+    self.m_wStatusBar["fg"]    = fgColors['normal']
+    self.m_varStatus.set(msg)
+    self.m_wStatusBar["state"] = "readonly"
+
+  #
+  ## \brief Show error message on status bar.
+  ##
+  ## \param msg   Error message string.
+  #
+  def showError(self, msg):
+    self.m_wStatusBar["state"] = "normal"
+    self.m_wStatusBar["fg"]    = fgColors['error']
+    self.m_varStatus.set(msg)
+    self.m_wStatusBar["state"] = "readonly"
+
+  #
+  ## \brief Show text on read-only entry.
+  ##
+  ## \param w     Entry widget.
+  ## \param var   Bound entry variable.
+  ## \param val   Variable value.
+  ## \param fg    Text foreground color.
+  #
+  def showEntry(self, w, var, val, fg='black'):
+    w['state'] = 'normal'
+    w['fg']    = fg
+    var.set(val)
+    w['state'] = 'readonly'
+
+  def toRobotMode(self, mode):
+    if mode == RobotMode.MANUAL:
+      return ("Manual", fgColors['warning'])
+    elif mode == RobotMode.AUTO:
+      return ("Auto", fgColors['normal'])
+    else:
+      return (repr(mode), fgColors['error'])
+
+  def toMotorsPowered(self, drives_powered):
+    if drives_powered:
+      return ("Motors powered", fgColors['normal'])
+    else:
+      return ("Motors unpowered", fgColors['normal'])
+
+  def toWheelState(self, opstate):
+      if opstate == KuonOpState.UNCALIBRATED:
+        return ("uncalibrated", fgColors['error'])
+      elif opstate == KuonOpState.CALIBRATING:
+        return ("calibrating", fgColors['focus'])
+      elif opstate == KuonOpState.CALIBRATED:
+        return ("calibrated", fgColors['normal'])
+      else:
+        return (repr(opstate), fgColors['error'])
+
+  def toPercent(self, n):
+    return "%6.1f%%" % (n*100.0), fgColors['normal']
+
+  def toDeg(self, rad):
+    deg = math.degrees(rad)
+    return round100th(deg), fgColors['normal']
+
+  def toVelocity(self, percent):
+    return round10th(percent), fgColors['normal']
+
+  def toEffort(self, effort):
+    absraw = math.fabs(effort)
+    raw    = int(effort)
+    if absraw < 900:
+      return (raw, fgColors['normal'])
+    elif absraw < 1000:
+      return (raw, fgColors['warning'])
+    else:
+      return (raw, fgColors['error'])
+
+  def toTemperatureColor(self, temp):
+    if temp >= 75:
+      return fgColors['error']
+    elif temp >= 60:
+      return fgColors['warning']
+    else:
+      return fgColors['normal']
+
+  def toVoltage(self, volts):
+    volts = round10th(volts)
+    if volts >= 10.5 and volts <= 13.0:
+      return (volts, fgColors['normal'])
+    elif volts >= 9.5 and volts <= 13.5:
+      return (volts, fgColors['warning'])
+    else:
+      return (volts, fgColors['error'])
+
+  def toAlarms(self, alarms):
+    if alarms == ServoHealth.ALARM_NONE:
+      return (alarmStrings[ServoHealth.ALARM_NONE], fgColors['ok'])
+    text = ""
+    sep  = ""
+    for bit in alarmStrings.keys():
+      if bit & alarms:
+        if len(alarmStrings[bit]) > 0:
+          text += sep + alarmStrings[bit]
+          sep = ','
+    return (text, fgColors['error'])
+
+
+# ------------------------------------------------------------------------------
+# Exception Class usage
+# ------------------------------------------------------------------------------
+
+##
+## \brief Unit test command-line exception class.
+##
+## Raise usage excpetion.
+##
+class usage(Exception):
+
+  ##
+  ## \brief Constructor.
+  ##
+  ## \param msg   Error message string.
+  ##
+  def __init__(self, msg):
+    ## error message attribute
+    self.msg = msg
+
+
+# ------------------------------------------------------------------------------
+# Class application
+# ------------------------------------------------------------------------------
+
+##
+## \brief Kuon control panel.
+##
+class application():
+
+  #
+  ## \brief Constructor.
+  #
+  def __init__(self):
+    self._Argv0 = __file__
+    self.m_win = None
+
+  #
+  ## \brief Print usage error.
+  ##
+  ## \param emsg  Error message string.
+  #
+  def printUsageErr(self, emsg):
+    if emsg:
+      print "%s: %s" % (self._Argv0, emsg)
+    else:
+      print "%s: error" % (self._Argv0)
+    print "Try '%s --help' for more information." % (self._Argv0)
+
+  ## \brief Print Command-Line Usage Message.
+  def printUsage(self):
+    print \
+"""
+usage: %s [OPTIONS]
+       %s --help
+
+Options and arguments:
+
+-h, --help                : Display this help and exit.
+"""  % (self._Argv0, self._Argv0)
+ 
+  #
+  ## \brief Get command-line options
+  ##  
+  ## \param argv          Argument list. If not None, then overrides
+  ##                      command-line arguments.
+  ## \param [out] kwargs  Keyword argument list.  
+  ##
+  ## \return Parsed keyword arguments.
+  #
+  def getOptions(self, argv=None, **kwargs):
+    if argv is None:
+      argv = sys.argv
+
+    self._Argv0 = kwargs.get('argv0', __file__)
+
+    # defaults
+    kwargs['debug'] = False
+
+    # parse command-line options
+    try:
+      opts, args = getopt.getopt(argv[1:], "?h",
+          ['help', ''])
+    except getopt.error, msg:
+      raise usage(msg)
+    for opt, optarg in opts:
+      if opt in ('-h', '--help', '-?'):
+        self.printUsage()
+        sys.exit(0)
+
+    #if len(args) < 1:
+    #  self.printUsageErr("No input xml file specified")
+    #  sys.exit(2)
+    #else:
+    #  kwargs['filename'] = args[0]
+
+    return kwargs
+
+  #
+  ## \brief Initialize interface to kuon_robot.
+  #
+  def initRobot(self):
+    self.m_win.showInfo("Initializing interface to Kuon.")
+
+    rospy.init_node("kuon_panel")
+
+    # subscribe to extended robot status data
+    rospy.Subscriber("kuon_control/robot_status_ex", 
+                     RobotStatusExtended, 
+                     self.m_win.updateRobotStatus) 
+
+    # subscribe to extended joint state data
+    rospy.Subscriber("kuon_control/joint_states_ex", 
+                     JointStateExtended, 
+                     self.m_win.updateWheelStates) 
+
+    self.m_win.showInfo("Kuon interface initialized.")
+
+  #
+  ## \brief Run application.
+  ##    
+  ## \param argv    Optional argument list to override command-line arguments.
+  ## \param kwargs  Optional keyword argument list.
+  ##
+  ## \return Exit code.
+  #
+  def run(self, argv=None, **kwargs):
+  
+    # parse command-line options and arguments
+    try:
+      kwargs = self.getOptions(argv, **kwargs)
+    except usage, e:
+      print e.msg
+      return 2
+
+    # parse application configuration xml file
+    xml = ConfigXml()
+    config = xml.parse()
+    del xml
+
+    # create root 
+    root = Tk()
+
+    # create application window
+    self.m_win = window(master=root, config=config)
+
+    root.protocol('WM_DELETE_WINDOW', root.destroy)
+
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
+
+    # initialize robot interface
+    self.initRobot()
+
+    # go for it
+    self.m_win.mainloop()
+
+    return 0
+
+
+# ------------------------------------------------------------------------------
+# main
+# ------------------------------------------------------------------------------
+if __name__ == '__main__':
+  app = application();
+  sys.exit( app.run() );
