@@ -3,9 +3,9 @@
 #
 # Package:   RoadNarrows Robotics ROS Pan-Tilt Robot Package
 #
-# Link:      https://github.com/roadnarrows-robotics/pan_tilt
+# Link:      https://github.com/roadnarrows-robotics/laelaps
 #
-# ROS Node:  pan_tilt_*
+# ROS Node:  laelaps_*
 #
 # File:      WarnDlg.py
 #
@@ -38,7 +38,7 @@ from Tkconstants import *
 from tkFileDialog import *
 import tkFont
 
-from pan_tilt_control.Utils import *
+from laelaps_control.Utils import *
 
 # ------------------------------------------------------------------------------
 # Class WarnDlg
@@ -103,7 +103,7 @@ class WarnDlg(Toplevel):
   ##
   def initData(self, kw):
     self.m_icons          = {}    # must keep loaded icons referenced
-    imageLoader = ImageLoader(py_pkg='pan_tilt_control.images')
+    imageLoader = ImageLoader(py_pkg='laelaps_control.images')
     if kw.has_key('title'):
       self.m_title = kw['title']
       del kw['title']

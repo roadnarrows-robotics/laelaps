@@ -23,7 +23,7 @@ find_package(rnr-laelaps
   REQUIRED
 )
 
-#catkin_python_setup()
+catkin_python_setup()
 
 add_message_files(
   DIRECTORY msg

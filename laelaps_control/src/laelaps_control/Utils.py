@@ -1,11 +1,11 @@
 ###############################################################################
 #
 #
-# Package:   RoadNarrows Robotics ROS Pan-Tilt Robot Package
+# Package:   RoadNarrows Robotics ROS Laelaps Robot Package
 #
-# Link:      https://github.com/roadnarrows-robotics/pan_tilt
+# Link:      https://github.com/roadnarrows-robotics/laelaps
 #
-# ROS Node:  pan_tilt_*
+# ROS Node:  laelaps_*
 #
 # File:      Utils.py
 #
@@ -16,11 +16,10 @@
 ##
 ## \brief Utilities.
 ##
-## \author Daniel Packard (daniel@roadnarrows.com)
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2014.  RoadNarrows LLC.\n
+##   (C) 2015.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -55,7 +54,7 @@ class ImageLoader:
   #
   ## \brief Constructor
   ##
-  ## \param py_pkg      Python resource (e.g. "pan_tilt_control.images").
+  ## \param py_pkg      Python resource (e.g. "laelaps_control.images").
   ## \param image_paths List of directory paths to search for the image.
   #
   def __init__(self, py_pkg=None, image_paths=[]):

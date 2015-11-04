@@ -1,11 +1,11 @@
 ###############################################################################
 #
 #
-# Package:   RoadNarrows Robotics Kuon Robotic Mobile Platform ROS Package
+# Package:   RoadNarrows Robotics Laelaps Robotic Mobile Platform ROS Package
 #
-# Link:      https://github.com/roadnarrows-robotics/kuon
+# Link:      https://github.com/roadnarrows-robotics/laelaps
 #
-# ROS Node:  kuon_panel
+# ROS Node:  laelaps_panel
 #
 # File:      PanelConfig.py
 #
@@ -14,13 +14,12 @@
 ## $LastChangedDate$
 ## $Rev$
 ##
-## \brief Kuon panel configuration dialog and XML classes.
+## \brief Laelaps panel configuration dialog and XML classes.
 ##
-## \author Daniel Packard (daniel@roadnarrows.com)
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2014.  RoadNarrows LLC.\n
+##   (C) 2015.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -40,14 +39,14 @@ import tkFont
 
 import xml.parsers.expat as expat
 
-from kuon_control.Utils import *
+from laelaps_control.Utils import *
 
 # ------------------------------------------------------------------------------
 # Class ConfigDlg
 # ------------------------------------------------------------------------------
 
 #
-## \brief Kuon Panel configuration dialog.
+## \brief Laelaps Panel configuration dialog.
 #
 class ConfigDlg(Toplevel):
   ## \brief User's home directory.
@@ -56,8 +55,8 @@ class ConfigDlg(Toplevel):
   ## \brief User-specific configuration directory (in home directory).
   UserDirName = ".roadnarrows"
 
-  ## \brief kuon_panel application configuration file name.
-  ConfigFileName = "kuon_panel.xml"
+  ## \brief laelaps_panel application configuration file name.
+  ConfigFileName = "laelaps_panel.xml"
 
   PathNameDft = Home + os.path.sep + \
                 UserDirName + os.path.sep + \
@@ -82,7 +81,7 @@ class ConfigDlg(Toplevel):
 
     Toplevel.__init__(self, master=master, cnf=cnf, **kw)
 
-    self.title("kuon_panel configuration")
+    self.title("laelaps_panel configuration")
 
     # create and show widgets
     self.createWidgets()
@@ -229,7 +228,7 @@ class ConfigDlg(Toplevel):
 # ------------------------------------------------------------------------------
 
 ##
-## \brief Application kuon_panel configuration xml class.
+## \brief Application laelaps_panel configuration xml class.
 ##
 class ConfigXml():
   def __init__(self):
@@ -265,22 +264,22 @@ class ConfigXml():
       return
     fp.write("""\
 <?xml version="1.0" encoding="utf-8"?>
-<?xml-stylesheet type="text/xsl" href="http://roadnarrows.com/xml/PanTilt/1.0/kuon.xsl"?>
+<?xml-stylesheet type="text/xsl" href="http://roadnarrows.com/xml/PanTilt/1.0/laelaps.xsl"?>
 
-<!-- RoadNarrows Kuon Top-Level Configuration -->
-<kuon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:noNamespaceSchemaLocation="http://roadnarrows.com/xml/PanTilt/1.0/kuon.xsd">
+<!-- RoadNarrows Laelaps Top-Level Configuration -->
+<laelaps xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://roadnarrows.com/xml/PanTilt/1.0/laelaps.xsd">
 
-  <!-- kuon_panel configuration -->
-  <kuon_panel>
+  <!-- laelaps_panel configuration -->
+  <laelaps_panel>
 """)
 
     self.writeTree(fp, 4, config);
 
     fp.write("""\
-  </kuon_panel>
+  </laelaps_panel>
 
-</kuon>
+</laelaps>
 """)
 
     fp.close()
@@ -307,7 +306,7 @@ class ConfigXml():
 
   def onElemEnd(self, elem):
     #print "end-of-element", "<\%s>" % (elem)
-    # <kuon> <kuon_panel> <x>
+    # <laelaps> <laelaps_panel> <x>
     if len(self.m_stack) == 3:
       elem = self.m_stack[2]
       if self.m_config.has_key(elem):
