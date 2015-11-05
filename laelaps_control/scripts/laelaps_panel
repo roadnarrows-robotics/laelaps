@@ -46,13 +46,16 @@ import rospy
 from industrial_msgs.msg import RobotMode
 from industrial_msgs.msg import TriState
 
-from laelaps_control.srv import EStop                # service
-from laelaps_control.srv import Freeze               # service
-from laelaps_control.srv import GetProductInfo       # service
-from laelaps_control.srv import Release              # service
-from laelaps_control.srv import ResetEStop           # service
-from laelaps_control.msg import RobotStatusExtended  # subscribe
-from laelaps_control.msg import Velocity             # publish
+from laelaps_control.msg import Dynamics            # subscribe
+from laelaps_control.srv import EStop               # service
+from laelaps_control.srv import Freeze              # service
+from laelaps_control.srv import GetProductInfo      # service
+from laelaps_control.srv import Release             # service
+from laelaps_control.msg import MotorCtlrHealth     # message
+from laelaps_control.msg import MotorHealth         # message
+from laelaps_control.srv import ResetEStop          # service
+from laelaps_control.msg import RobotStatusExtended # subscribe
+from laelaps_control.msg import Velocity            # publish
 
 from laelaps_control.Utils import *
 from laelaps_control.PanelConfig import *
@@ -74,12 +77,12 @@ imagePath = [
 ]
 
 ## \brief Alarm strings.
-alarmStrings = {
-  MotorHealth.ALARM_NONE:         "ok",
-  MotorHealth.ALARM_VOLTAGE:      "V",
-  MotorHealth.ALARM_TEMP:         "T",
-  MotorHealth.ALARM_COMM:         "comm",
-}
+##alarmStrings = {
+##  MotorHealth.ALARM_NONE:         "ok",
+##  MotorHealth.ALARM_VOLTAGE:      "V",
+##  MotorHealth.ALARM_TEMP:         "T",
+##  MotorHealth.ALARM_COMM:         "comm",
+##}
 
 ## \brief Common foreground colors.
 fgColors = {
@@ -114,8 +117,8 @@ class window(Frame):
     kw = self.initData(kw)
 
     # publish speed command
-    self.m_pub_speed_cmd = rospy.Publisher("laelaps_control/set_velocities",
-        move)
+    self.m_pub_velocities = rospy.Publisher("laelaps_control/set_velocities",
+        Velocity, queue_size=2)
 
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
@@ -770,7 +773,7 @@ class window(Frame):
     cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = 0.20;
     cmd.right_motors = 0.20;
-    self.m_pub_speed_cmd.publish(cmd)
+    self.m_pub_velocities.publish(cmd)
   
   #
   ## \brief Move backward.
@@ -782,7 +785,7 @@ class window(Frame):
     cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = -0.20;
     cmd.right_motors = -0.20;
-    self.m_pub_speed_cmd.publish(cmd)
+    self.m_pub_velocities.publish(cmd)
   
   #
   ## \brief Spin left.
@@ -794,7 +797,7 @@ class window(Frame):
     cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = -0.20;
     cmd.right_motors = 0.20;
-    self.m_pub_speed_cmd.publish(cmd)
+    self.m_pub_velocities.publish(cmd)
   
   #
   ## \brief Spin right.
@@ -806,7 +809,7 @@ class window(Frame):
     cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = 0.20;
     cmd.right_motors = -0.20;
-    self.m_pub_speed_cmd.publish(cmd)
+    self.m_pub_velocities.publish(cmd)
   
   #
   ## \brief Brake to stop.
@@ -817,7 +820,7 @@ class window(Frame):
     cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = 0.0;
     cmd.right_motors = 0.0;
-    self.m_pub_speed_cmd.publish(cmd)
+    self.m_pub_velocities.publish(cmd)
     self.showInfo("Stopped.")
   
   #
@@ -986,15 +989,13 @@ class window(Frame):
     self.showRobotStatus(status)
 
   #
-  ## \brief Update joint state.
+  ## \brief Update robot dynamics state.
   ##
-  ## \param wheels Wheel state message.
+  ## \param dynamics  Robot current dynamics state.
   #
-  def updateWheelStates(self, wheels):
-    # no joints
-    if len(wheels.name) == 0:
-      return
-    self.showJointStates(wheels)
+  def updateDynamics(self, dynamics):
+    pass
+    #self.showDynamics(wheels)
 
   #
   ## \brief Show robot status.
@@ -1065,11 +1066,11 @@ class window(Frame):
       self.updateButtonState(self.m_keysNoMoves, state)
 
   #
-  ## \brief Show joint state.
+  ## \brief Show dynamics state.
   ##
-  ## \param joint   Joint (motor/wheel) state message.
+  ## \param dynamics  Robot current dynamics state.
   #
-  def showJointStates(self, joint):
+  def showDynamics(self, dynamics):
     for i in range(0, len(joint.name)):
       name = joint.name[i]
       if not self.m_robotJoint.has_key(name):
@@ -1205,8 +1206,10 @@ class window(Frame):
       return (volts, fgColors['error'])
 
   def toAlarms(self, alarms):
-    if alarms == ServoHealth.ALARM_NONE:
-      return (alarmStrings[ServoHealth.ALARM_NONE], fgColors['ok'])
+    return ("TODO", fgColors['error'])
+    """
+    if alarms == MotorHealth.ALARM_NONE:
+      return (alarmStrings[MotorHealth.ALARM_NONE], fgColors['ok'])
     text = ""
     sep  = ""
     for bit in alarmStrings.keys():
@@ -1215,6 +1218,7 @@ class window(Frame):
           text += sep + alarmStrings[bit]
           sep = ','
     return (text, fgColors['error'])
+    """
 
 
 # ------------------------------------------------------------------------------
@@ -1329,9 +1333,9 @@ Options and arguments:
                      self.m_win.updateRobotStatus) 
 
     # subscribe to extended joint state data
-    rospy.Subscriber("laelaps_control/joint_states_ex", 
-                     JointStateExtended, 
-                     self.m_win.updateWheelStates) 
+    rospy.Subscriber("laelaps_control/dynamics", 
+                     Dynamics, 
+                     self.m_win.updateDynamics) 
 
     self.m_win.showInfo("Laelaps interface initialized.")
 
