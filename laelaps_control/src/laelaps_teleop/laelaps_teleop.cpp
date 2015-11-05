@@ -81,11 +81,15 @@
 #include "rnr/hid/HIDXbox360.h"
 
 //
+// ROS generated industrial messages.
+//
+#include "industrial_msgs/RobotStatus.h"        // subscribe
+
+//
 // ROS generated Laelaps messages.
 //
-#include "laelaps_control/ProductInfo.h"         // service
-#include "laelaps_control/RobotStatusExtended.h" // subscribe
-#include "laelaps_control/Velocity.h"            // publish
+#include "laelaps_control/ProductInfo.h"        // service
+#include "laelaps_control/Velocity.h"           // publish
 
 //
 // ROS generatated Laelaps services.
@@ -380,7 +384,7 @@ void LaelapsTeleop::subscribeToTopics(int nQueueDepth)
 {
   string  strSub;
 
-  strSub = "/laelaps_control/robot_status_ex";
+  strSub = "/laelaps_control/robot_status";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
                                           &LaelapsTeleop::cbRobotStatus,
                                           &(*this));
@@ -396,7 +400,7 @@ void LaelapsTeleop::subscribeToTopics(int nQueueDepth)
                                           &(*this));
 }
 
-void LaelapsTeleop::cbRobotStatus(const laelaps_control::RobotStatusExtended &msg)
+void LaelapsTeleop::cbRobotStatus(const industrial_msgs::RobotStatus &msg)
 {
   ROS_DEBUG("Received robot status.");
 

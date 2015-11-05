@@ -76,11 +76,15 @@
 #include "rnr/hid/HIDXbox360.h"
 
 //
+// ROS generated industrial messages.
+//
+#include "industrial_msgs/RobotStatus.h"        // subscribe
+
+//
 // ROS generated Laelaps messages.
 //
-#include "laelaps_control/ProductInfo.h"         // service
-#include "laelaps_control/RobotStatusExtended.h" // subscribe
-#include "laelaps_control/Velocity.h"            // publish
+#include "laelaps_control/ProductInfo.h"        // service
+#include "laelaps_control/Velocity.h"           // publish
 
 //
 // ROS generatated Laelaps services.
@@ -289,7 +293,7 @@ namespace laelaps_control
     ButtonState       m_buttonState;      ///< saved button state
 
     // messages
-    laelaps_control::RobotStatusExtended m_msgRobotStatus;
+    industrial_msgs::RobotStatus m_msgRobotStatus;
                                                 ///< saved last robot status 
     hid::ConnStatus           m_msgConnStatus;  ///< saved last conn status 
 
@@ -394,7 +398,7 @@ namespace laelaps_control
      *
      * \param msg Received subscribed topic.
      */
-    void cbRobotStatus(const laelaps_control::RobotStatusExtended &msg);
+    void cbRobotStatus(const industrial_msgs::RobotStatus &msg);
 
     /*!
      * \brief Xbox360 HID connectivity status callback.
