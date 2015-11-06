@@ -158,19 +158,11 @@ class ConfigDlg(Toplevel):
     wframe.grid(row=row, column=0)
 
     #
-    # governor
+    # Nada
     #
     subrow = 0
-    w = Label(wframe, text="Governor (%): ")
+    w = Label(wframe, text="No configuration")
     w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varGovernor = DoubleVar()
-    self.m_varGovernor.set(self.m_config['governor']*100.0)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varGovernor
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
 
     #
     # buttons

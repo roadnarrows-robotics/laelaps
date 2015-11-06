@@ -6,7 +6,7 @@
 # motor controller health
 string          name        # Motor controller name: [front, rear].
 float32         temp        # Motor controller temperature [C]
-float32         voltage     # Motor input voltage [Volts]
+float32         voltage     # Battery input voltage [Volts]
 uint16          alarms      # Motor or'ed alarm and warning bits (see below)
 
 ### alarm bits 

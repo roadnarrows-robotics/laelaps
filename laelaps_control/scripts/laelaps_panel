@@ -147,8 +147,7 @@ class window(Frame):
     self.m_keysFewMoves   = []    # gui button keys depending on calibration
     self.m_keysNoMoves    = []    # gui button keys depending on robot mode
     self.m_robotStatus    = {}    # robot status widgets, variables, and values
-    self.m_robotJoint     = {}    # robot joint state widgets, variables, etc.
-    self.m_doCfg          = True  # auto-configure when connected to robot
+    self.m_powertrain     = {}    # powertrain state widgets, variables, etc.
 
     if kw.has_key('config'):
       self.m_config = kw['config']
@@ -271,7 +270,7 @@ class window(Frame):
     self.m_wPanelFrame.grid(row=1, column=1, padx=1, pady=3, sticky=N+W+E)
 
     self.createRobotStatusPanel(self.m_wPanelFrame, 0)
-    self.createJointStatePanel(self.m_wPanelFrame, 1)
+    self.createPowertrainStatePanel(self.m_wPanelFrame, 1)
 
   #
   ## \brief Create robot status upper center panel.
@@ -293,7 +292,7 @@ class window(Frame):
 
     # robot mode field label
     w = Label(wframe)
-    w['text']     = 'Mode: '
+    w['text']     = ' Mode: '
     w['justify']  = RIGHT
     w['anchor']   = W
     w['relief']   = 'flat'
@@ -319,9 +318,9 @@ class window(Frame):
 
     col += 1
 
-    # governor field label
+    # battery field label
     w = Label(wframe)
-    w['text']     = 'Governor: '
+    w['text']     = ' Battery: '
     w['justify']  = RIGHT
     w['anchor']   = W
     w['relief']   = 'flat'
@@ -329,28 +328,54 @@ class window(Frame):
 
     col += 1
 
-    # governor field
+    # battery field
     var = StringVar()
-    text, color = self.toPercent(0.0);
+    text, color = self.toVoltage(0.0)
     var.set(text)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = 7
+    w = Label(wframe)
     w['textvar']  = var
+    w['relief']   = 'flat'
+    w['width']    = 6
     w['fg']       = color
     w['justify']  = LEFT
-    w['state']    = 'readonly'
     w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+
     d = {'raw': 0.0, 'var': var, 'w': w}
-    self.m_robotStatus['governor'] = d
+    self.m_robotStatus['battery'] = d
 
     col += 1
 
-    spacer = Label(wframe, text=' ', width=1)
-    spacer.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
+    # temperature field label
+    w = Label(wframe)
+    w['text']     = ' Temp: '
+    w['justify']  = RIGHT
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w.grid(row=row, column=col, sticky=W)
 
     col += 1
+
+    # temperature field
+    var = StringVar()
+    text, color = self.toTemperature(0.0)
+    var.set(text)
+    w = Label(wframe)
+    w['textvar']  = var
+    w['relief']   = 'flat'
+    w['width']    = 5
+    w['fg']       = color
+    w['justify']  = LEFT
+    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+
+    d = {'raw': 0.0, 'var': var, 'w': w}
+    self.m_robotStatus['temp'] = d
+
+    col += 1
+
+    #spacer = Label(wframe, text=' ', width=10)
+    #spacer.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
+
+    #col += 1
 
     wframe = Frame(wframe)
     wframe['borderwidth'] = 0
@@ -458,13 +483,13 @@ class window(Frame):
     self.m_robotStatus['estop_led'] = d
 
   #
-  ## \brief Create joint state lower center panel headers.
+  ## \brief Create powertrain state lower center panel headers.
   ##
   ## \param parent  Parent widget
   ## \param row     Row in parent widget.
   #
-  def createJointStatePanel(self, parent, row):
-    wframe = LabelFrame(parent, text='Motor State')
+  def createPowertrainStatePanel(self, parent, row):
+    wframe = LabelFrame(parent, text='Powertrain State')
     wframe['font'] =('Helvetica', 12)
     wframe['fg'] = fgColors['focus']
     wframe['borderwidth'] = 2
@@ -498,7 +523,7 @@ class window(Frame):
     wsubframe.grid(row=0, column=0, padx=padx, pady=0, sticky=N+W+E)
     wsubframe.grid_propagate(0)
 
-    self.createMotorSubpanel(wsubframe, 'left_front', True)
+    self.createPowertrainSubpanel(wsubframe, 'left_front', True)
 
     # Left-Rear motor/wheel/tire
     wsubframe = Frame(wframe);
@@ -506,7 +531,7 @@ class window(Frame):
     wsubframe['relief'] = 'flat'
     wsubframe.grid(row=1, column=0, padx=padx, pady=0, sticky=N+W+E)
 
-    self.createMotorSubpanel(wsubframe, 'left_rear', True)
+    self.createPowertrainSubpanel(wsubframe, 'left_rear', True)
 
     # Right-Front motor/wheel/tire
     wsubframe = Frame(wframe);
@@ -514,7 +539,7 @@ class window(Frame):
     wsubframe['relief'] = 'flat'
     wsubframe.grid(row=0, column=2, padx=padx, pady=0, sticky=N+W+E)
 
-    self.createMotorSubpanel(wsubframe, 'right_front', False)
+    self.createPowertrainSubpanel(wsubframe, 'right_front', False)
 
     # Right-Rear motor/wheel/tire
     wsubframe = Frame(wframe);
@@ -522,7 +547,7 @@ class window(Frame):
     wsubframe['relief'] = 'flat'
     wsubframe.grid(row=1, column=2, padx=padx, pady=0, sticky=N+W+E)
 
-    self.createMotorSubpanel(wsubframe, 'right_rear', False)
+    self.createPowertrainSubpanel(wsubframe, 'right_rear', False)
 
   #
   ## \brief Create joint state lower center panel state.
@@ -531,9 +556,9 @@ class window(Frame):
   ## \param jointName Name of joint (motor)
   ## \param onLeft    Labeling is [not] on the left.
   #
-  def createMotorSubpanel(self, wframe, jointName, onLeft):
+  def createPowertrainSubpanel(self, wframe, jointName, onLeft):
 
-    self.m_robotJoint[jointName] = {}
+    self.m_powertrain[jointName] = {}
 
     if onLeft:
       prefix    = ''
@@ -548,12 +573,41 @@ class window(Frame):
       colField  = 0
       justLabel = LEFT
 
-    width = 7
-    row   = 0
+    widthLabel = 8
+    widthField = 12
+    row        = 0
 
     # spacer
-    spacer = Label(wframe, text=' ', width=width)
+    spacer = Label(wframe, text=' ', width=widthLabel)
     spacer.grid(row=row, column=0, padx=0, pady=0, sticky=W+E)
+
+    row += 1
+
+    # encoder field label
+    w = Label(wframe)
+    w['text']     = prefix + 'Encoder' + postfix
+    w['anchor']   = W
+    w['relief']   = 'flat'
+    w['width']    = widthLabel
+    w['justify']  = justLabel
+    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
+
+    # encoder field
+    var = StringVar()
+    text, color = (0, fgColors['normal'])
+    var.set(text)
+    w = Label(wframe)
+    w['textvar']  = var
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w['width']    = widthField
+    w['fg']       = color
+    w['justify']  = RIGHT
+    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
+
+    d = {'raw': 0, 'var': var, 'w': w}
+
+    self.m_powertrain[jointName]['encoder'] = d
 
     row += 1
 
@@ -562,87 +616,55 @@ class window(Frame):
     w['text']     = prefix + 'Speed' + postfix
     w['anchor']   = W
     w['relief']   = 'flat'
-    w['width']    = width
+    w['width']    = widthLabel
     w['justify']  = justLabel
     w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
 
     # speed field
     var = StringVar()
-    text, color = self.toPercent(0.0);
+    text, color = (0, fgColors['normal'])
     var.set(text)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = width
+    w = Label(wframe)
     w['textvar']  = var
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w['width']    = widthField
     w['fg']       = color
     w['justify']  = RIGHT
-    w['state']    = 'readonly'
     w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
 
-    d = {'raw': 0.0, 'var': var, 'w': w}
+    d = {'raw': 0, 'var': var, 'w': w}
 
-    self.m_robotJoint[jointName]['speed'] = d
+    self.m_powertrain[jointName]['speed'] = d
 
     row += 1
 
-    # brake field label
+    # power field label
     w = Label(wframe)
-    w['text']     = prefix + 'Brake' + postfix
+    w['text']     = prefix + 'Power' + postfix
     w['anchor']   = W
     w['relief']   = 'flat'
-    w['width']    = width
+    w['width']    = widthLabel
     w['justify']  = justLabel
     w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
 
-    # brake field
+    # power field
     var = StringVar()
-    text, color = self.toPercent(0.0);
+    text, color = (0.0, fgColors['normal'])
     var.set(text)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = width
+    w = Label(wframe)
     w['textvar']  = var
+    w['anchor']   = E
+    w['relief']   = 'flat'
+    w['width']    = widthField
     w['fg']       = color
     w['justify']  = RIGHT
-    w['state']    = 'readonly'
     w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
 
     d = {'raw': 0.0, 'var': var, 'w': w}
 
-    self.m_robotJoint[jointName]['brake'] = d
+    self.m_powertrain[jointName]['power'] = d
 
-    row += 1
-
-    # slew field label
-    w = Label(wframe)
-    w['text']     = prefix + 'Slew' + postfix
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w['width']    = width
-    w['justify']  = justLabel
-    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
-
-    # slew field
-    var = StringVar()
-    text, color = self.toPercent(0.0);
-    var.set(text)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = width
-    w['textvar']  = var
-    w['fg']       = color
-    w['justify']  = RIGHT
-    w['state']    = 'readonly'
-    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0.0, 'var': var, 'w': w}
-
-    self.m_robotJoint[jointName]['slew'] = d
-
-    
   #
   ## \brief Create gui right hand side buttons.
   #
@@ -768,11 +790,9 @@ class window(Frame):
   #
   def moveForward(self):
     self.showInfo("Moving forward.")
-    self.resetBrake()
-    cmd = move()
-    cmd.units.e = Units.UNITS_NORM
-    cmd.left_motors  = 0.20;
-    cmd.right_motors = 0.20;
+    cmd = Velocity()
+    cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
+    cmd.velocities = [10.0, 10.0, 10.0, 10.0]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -780,11 +800,9 @@ class window(Frame):
   #
   def moveBackward(self):
     self.showInfo("Moving back.")
-    self.resetBrake()
-    cmd = move()
-    cmd.units.e = Units.UNITS_NORM
-    cmd.left_motors  = -0.20;
-    cmd.right_motors = -0.20;
+    cmd = Velocity()
+    cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
+    cmd.velocities = [-10.0, -10.0, -10.0, -10.0]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -792,6 +810,9 @@ class window(Frame):
   #
   def spinLeft(self):
     self.showInfo("Spinning left.")
+    cmd = Velocity()
+    cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
+    cmd.velocities = [-10.0, -10.0, 10.0, 10.0]
     self.resetBrake()
     cmd = move()
     cmd.units.e = Units.UNITS_NORM
@@ -804,6 +825,9 @@ class window(Frame):
   #
   def spinRight(self):
     self.showInfo("Spinning right.")
+    cmd = Velocity()
+    cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
+    cmd.velocities = [10.0, 10.0, -10.0, -10.0]
     self.resetBrake()
     cmd = move()
     cmd.units.e = Units.UNITS_NORM
@@ -816,10 +840,7 @@ class window(Frame):
   #
   def stop(self):
     self.resetBrake()
-    cmd = move()
-    cmd.units.e = Units.UNITS_NORM
-    cmd.left_motors  = 0.0;
-    cmd.right_motors = 0.0;
+    cmd = Stop()
     self.m_pub_velocities.publish(cmd)
     self.showInfo("Stopped.")
   
@@ -829,18 +850,6 @@ class window(Frame):
   def specifyMove(self):
     pass
   
-  #
-  ## \brief Reset brake to configuration value.
-  ## 
-  ## Various commands can override the value such as estop, freeze, and 
-  ## release.
-  ##
-  def resetBrake(self):
-    if self.m_robotStatus['governor']['raw'] != self.m_config['governor']:
-      cmd = BrakeCmd()
-      cmd.brake = self.m_config['governor']
-      self.m_pub_brake_cmd.publish(cmd)
-
   #
   ## \brief (Reset) emergency stop button callback.
   #
@@ -984,8 +993,6 @@ class window(Frame):
   ## \param status  Robot status extended message.
   #
   def updateRobotStatus(self, status):
-    if self.m_doCfg:
-      self.m_doCfg = False;
     self.showRobotStatus(status)
 
   #
@@ -994,8 +1001,7 @@ class window(Frame):
   ## \param dynamics  Robot current dynamics state.
   #
   def updateDynamics(self, dynamics):
-    pass
-    #self.showDynamics(wheels)
+    self.showDynamics(dynamics)
 
   #
   ## \brief Show robot status.
@@ -1021,12 +1027,19 @@ class window(Frame):
         state = 'normal'
       self.updateButtonState(self.m_keysNoMoves, state)
 
-    key = 'governor'
-    if self.m_robotStatus[key]['raw'] != status.governor:
-      text, fg = self.toPercent(status.governor)
-      self.m_robotStatus[key]['raw'] = status.governor
-      self.showEntry(self.m_robotStatus[key]['w'],
-                     self.m_robotStatus[key]['var'], text, fg)
+    key = 'battery'
+    if self.m_robotStatus[key]['raw'] != status.mode.val:
+      text, fg = self.toVoltage(status.voltage)
+      self.m_robotStatus[key]['var'].set(text)
+      self.m_robotStatus[key]['w']['fg'] = fg
+      self.m_robotStatus[key]['raw'] = status.voltage
+
+    key = 'temp'
+    if self.m_robotStatus[key]['raw'] != status.mode.val:
+      text, fg = self.toTemperature(status.temp)
+      self.m_robotStatus[key]['var'].set(text)
+      self.m_robotStatus[key]['w']['fg'] = fg
+      self.m_robotStatus[key]['raw'] = status.temp
 
     key = 'motors_led'
     if self.m_robotStatus[key]['raw'] != status.drives_powered.val:
@@ -1071,34 +1084,31 @@ class window(Frame):
   ## \param dynamics  Robot current dynamics state.
   #
   def showDynamics(self, dynamics):
-    for i in range(0, len(joint.name)):
-      name = joint.name[i]
-      if not self.m_robotJoint.has_key(name):
+    for i in range(0, len(dynamics.name)):
+      name = dynamics.name[i]
+      if not self.m_powertrain.has_key(name):
         continue
 
+      key = 'encoder'
+      val = dynamics.motor_encoder[i]
+      if self.m_powertrain[name][key]['raw'] != val:
+        text = "%d" % (val)
+        self.m_powertrain[name][key]['var'].set(text)
+        self.m_powertrain[name][key]['raw'] = val
+
       key = 'speed'
-      val = joint.speed[i]
-      if self.m_robotJoint[name][key]['raw'] != val:
-        text, fg = self.toPercent(val/RS160D_MOTOR_SPEED_MAX);
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], text, fg)
-        self.m_robotJoint[name][key]['raw'] = val
+      val = dynamics.motor_speed[i]
+      if self.m_powertrain[name][key]['raw'] != val:
+        text = "%d" % (val)
+        self.m_powertrain[name][key]['var'].set(text)
+        self.m_powertrain[name][key]['raw'] = val
 
-      key = 'brake'
-      val = joint.brake[i]
-      if self.m_robotJoint[name][key]['raw'] != val:
-        text, fg = self.toPercent(val)
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], text, fg)
-        self.m_robotJoint[name][key]['raw'] = val
-
-      key = 'slew'
-      val = joint.slew[i]
-      if self.m_robotJoint[name][key]['raw'] != val:
-        text, fg = self.toPercent(val)
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], text, fg)
-        self.m_robotJoint[name][key]['raw'] = val
+      key = 'power'
+      val = dynamics.motor_power_elec[i]
+      if self.m_powertrain[name][key]['raw'] != val:
+        text = "%5.1fW" % (val)
+        self.m_powertrain[name][key]['var'].set(text)
+        self.m_powertrain[name][key]['raw'] = val
 
   #
   ## \brief Show servo health.
@@ -1188,22 +1198,29 @@ class window(Frame):
     else:
       return (raw, fgColors['error'])
 
-  def toTemperatureColor(self, temp):
-    if temp >= 75:
-      return fgColors['error']
-    elif temp >= 60:
-      return fgColors['warning']
+  def toTemperature(self, temp):
+    if temp >= 75.0:
+      color = fgColors['error']
+    if temp <= 0.0:
+      color = fgColors['error']
+    elif temp >= 60.0:
+      color = fgColors['warning']
+    elif temp <= 10.0:
+      color = fgColors['warning']
     else:
-      return fgColors['normal']
+      color = fgColors['normal']
+    return ("%4.1fC" % (temp), color)
 
   def toVoltage(self, volts):
-    volts = round10th(volts)
-    if volts >= 10.5 and volts <= 13.0:
-      return (volts, fgColors['normal'])
-    elif volts >= 9.5 and volts <= 13.5:
-      return (volts, fgColors['warning'])
+    if volts > 14.0:
+      color = fgColors['error']
+    elif volts < 9.0:
+      color = fgColors['error']
+    elif volts < 9.6:
+      color = fgColors['warning']
     else:
-      return (volts, fgColors['error'])
+      color = fgColors['normal']
+    return ("%3.1fV" % (volts), color)
 
   def toAlarms(self, alarms):
     return ("TODO", fgColors['error'])
@@ -1338,6 +1355,28 @@ Options and arguments:
                      self.m_win.updateDynamics) 
 
     self.m_win.showInfo("Laelaps interface initialized.")
+
+    #self.dbgDisplay()
+
+  def dbgDisplay(self):
+    msg = RobotStatusExtended()
+    msg.mode.val = RobotMode.MANUAL 
+    msg.drives_powered.val = TriState.ON
+    msg.motion_possible.val = TriState.ON
+    msg.in_motion.val = TriState.ON
+    msg.in_error.val = TriState.ON
+    msg.e_stopped.val = TriState.ON
+    msg.temp = 35.2
+    msg.voltage = 11.2
+    self.m_win.updateRobotStatus(msg) 
+
+    msg = Dynamics()
+    msg.name = ['left_front', 'right_rear', 'right_front', 'left_rear']
+    msg.motor_encoder = [1925050, -457812, 1, 99992]
+    msg.motor_speed = [-5050, 345, 0, -500]
+    msg.motor_power_elec = [32.9, 0.009, 13.667, 19]
+
+    self.m_win.updateDynamics(msg) 
 
   #
   ## \brief Run application.

@@ -112,7 +112,7 @@ class AboutDlg(Toplevel):
   def initData(self, kw):
     self.m_icons          = {}    # must keep loaded icons referenced
     self.m_prodName       = "Laelaps"
-    self.m_hwVer          = "0.9.2"
+    self.m_hwVer          = "2.0.0"
     self.m_prodId         = 0x00
     self.m_prodBrief      = "Laelaps Outdoor Robotic Mobile Platform"
     self.m_appVer         = "0.0.0"
