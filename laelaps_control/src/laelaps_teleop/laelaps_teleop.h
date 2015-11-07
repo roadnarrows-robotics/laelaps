@@ -275,6 +275,10 @@ namespace laelaps_control
     ros::NodeHandle  &m_nh;       ///< the node handler bound to this instance
     double            m_hz;       ///< application nominal loop rate
 
+    // robot
+ 
+    double    m_maxRadiansPerSec; ///< max wheel-shaft radians/second
+
     // ROS services, publishers, subscriptions.
     MapServices       m_services;       ///< laelaps teleop as server services
     MapClientServices m_clientServices; ///< laelaps teleop as client services

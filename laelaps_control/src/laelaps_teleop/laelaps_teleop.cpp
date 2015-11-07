@@ -142,7 +142,8 @@ using namespace laelaps;
 // LaelapsTeleop Class
 //------------------------------------------------------------------------------
 
-LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) : m_nh(nh), m_hz(hz)
+LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
+      m_nh(nh), m_hz(hz)
 {
   m_eState          = TeleopStateUninit;
   m_bHasXboxComm    = false;
@@ -152,6 +153,10 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) : m_nh(nh), m_hz(hz
   m_nWdRobotCounter = 0;
   m_nWdRobotTimeout = countsPerSecond(5.0);
   m_bHasFullComm    = false;
+
+  m_maxRadiansPerSec = (double)LaeMaxQpps *
+                        ( (M_TAU / (double)LaeQuadPulsesPerRev) /
+                           LaeMotorGearRatio );
 
   m_buttonState = map_list_of
       (ButtonIdEStop,   0)
@@ -339,13 +344,11 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
 
 void LaelapsTeleop::publishVelocities(double speedLeft, double speedRight)
 {
-  static double MaxRadiansPerSec = 30.0;   // RDK 
-
   double    fVelLeft, fVelRight;
   Velocity  msg;
 
-  fVelLeft  = speedLeft  * MaxRadiansPerSec;
-  fVelRight = speedRight * MaxRadiansPerSec;
+  fVelLeft  = speedLeft  * m_maxRadiansPerSec;
+  fVelRight = speedRight * m_maxRadiansPerSec;
 
   // stampHeader RDK
   msg.names.push_back(LaeKeyLeftFront);
