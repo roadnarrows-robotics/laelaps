@@ -158,7 +158,6 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
                         ( (M_TAU / (double)LaeQuadPulsesPerRev) /
                            LaeMotorGearRatio );
 
-  printf("rdk: max=%lf\n", m_maxRadiansPerSec);
   m_buttonState = map_list_of
       (ButtonIdEStop,   0)
       //(ButtonIdGovUp,   0)
