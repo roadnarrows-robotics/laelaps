@@ -1,7 +1,9 @@
-## All images in pan_tilt_control package.
+## All images in laelaps_control package.
 __all__ = [
   'icons',
-  'KuonLogo.png',
-  'KuonTopDown300.png',
+  'GaugeDialLargeGreenRed.png',
+  'GaugeNeedleLargeDark.png',
+  'LaelapsLogo.png',
+  'LaelapsTopDown300.png',
   'RNLogo48.png',
 ]

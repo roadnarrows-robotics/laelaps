@@ -65,14 +65,20 @@ class ImageLoader:
       self.m_imagePaths = ['.']
   
   #
-  ## \brief Class to handle image loading.
-  #Load icon image from file name.
+  ## \brief Open image from file and convert to PhotoImage.
   ##
-  ## \param filename    Icon file name.
+  ## \param filename    Image file name.
   ##
-  ## \return Returns icon widget on success, None on failure.
+  ## \return Returns image widget on success, None on failure.
   #
-  def load(self, filename):
+  def loadImage(self, filename):
+    img = self.openImage(filename)
+    if img is not None:
+      return ImageTk.PhotoImage(img)
+    else:
+      return None
+
+  """
     # no file name
     if filename is None or len(filename) == 0:
       return None;
@@ -97,6 +103,37 @@ class ImageLoader:
       fqname = path + os.path.sep + filename
       try:
         return ImageTk.PhotoImage(Image.open(fqname))
+      except IOError:
+        continue
+    return None
+  """
+
+  #
+  ## \brief Open image from file.
+  ##
+  ## \param filename    Image file name.
+  ##
+  ## \return Returns image widget on success, None on failure.
+  #
+  def openImage(self, filename):
+    # no file name
+    if filename is None or len(filename) == 0:
+      return None;
+    # relative file name - try python resource(s) first
+    if self.m_pyPkg:
+      try:
+        fqname = resource_filename(self.m_pyPkg, filename)
+        try:
+          return Image.open(fqname)
+        except IOError:
+          pass
+      except ImportError:
+        pass
+    # relative file name - search path for file
+    for path in self.m_imagePaths:
+      fqname = path + os.path.sep + filename
+      try:
+        return Image.open(fqname)
       except IOError:
         continue
     return None
