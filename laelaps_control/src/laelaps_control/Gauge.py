@@ -70,16 +70,27 @@ class Dial(Frame):
   ## \return Modified keywords sans this specific class.
   ##
   def initData(self, kw):
-    self.m_images         = {}    # must keep loaded images referenced
+    # defaults
     self.m_gaugeLabel     = ""
+    self.m_gaugeShowVal   = False
     self.m_gaugeMin       = 0
     self.m_gaugeMax       = 100
     self.m_gaugeHome      = 0
+    self.m_gaugeSize      = 300
+
     for k,v in kw.iteritems():
-      if k == "gauge_min":
-        self.m_guageMin = v
+      if k == "gauge_label":
+        self.m_gaugeLabel = v
+      elif k == "gauge_show_val":
+        self.m_gaugeMin = v
+      elif k == "gauge_min":
+        self.m_gaugeMin = v
       elif k == "gauge_max":
-        self.m_guageMax = v
+        self.m_gaugeMax = v
+      elif k == "gauge_home":
+        self.m_gaugeHome = v
+      elif k == "gauge_size":
+        self.m_gaugeSize = v
       else:
         continue
       del kw[k]
@@ -89,39 +100,61 @@ class Dial(Frame):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createGauge(self):
-    imageLoader = ImageLoader(py_pkg="laelaps_control.images")
+    imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
+    scale               = 1.0
+    wSize               = (300, 300)
+    iOrigin             = (wSize[0]/2, wSize[1]/2)
+    self.m_photoDial    = None
+    self.m_photoNeedle  = None
+    self.m_angle        = 0.0
 
-    self.m_canvas = Canvas(self, width=300, height=300)
-    self.m_canvas.grid(row=0, column=0)
-
+    #
+    # Dial face
+    #
     self.m_imgDial = imageLoader.openImage("GaugeDialGreenRed.png")
 
     if self.m_imgDial is not None:
-      #self.m_imgDial = self.m_imgDial.resize((50,50), Image.BICUBIC)
+      imgSize = self.m_imgDial.size
+      if imgSize[0] != self.m_gaugeSize:
+        scale   = float(self.m_gaugeSize) / float(imgSize[0])
+        wSize   = (int(imgSize[0] * scale), int(imgSize[1] * scale))
+        iOrigin  = (wSize[0]/2, wSize[1]/2)
+        self.m_imgDial = self.m_imgDial.resize(wSize, Image.BICUBIC)
       self.m_photoDial = ImageTk.PhotoImage(self.m_imgDial)
 
-    # dial
-    if self.m_photoDial is not None:
-      self.m_canvas.create_image(150, 150, image=self.m_photoDial)
-
-    self.m_imgNeedle = imageLoader.openImage("GaugeNeedleDarkGray.png")
+    #
+    # Dial needle
+    #
+    self.m_imgNeedle = imageLoader.openImage("GaugeNeedleWhite.png")
 
     if self.m_imgNeedle is not None:
       self.m_imgNeedle = self.m_imgNeedle.convert('RGBA')
-      #self.m_imgNeedle = self.m_imgNeedle.resize((50,50))
-
-      self.m_angle = 0.0
-
+      if scale != 1.0:
+        imgSize = self.m_imgDial.size
+        size = (int(imgSize[0] * scale), int(imgSize[1] * scale))
+        self.m_imgDial = self.m_imgDial.resize(size, Image.BICUBIC)
       self.m_photoNeedle = ImageTk.PhotoImage(self.m_imgNeedle)
-      self.m_idNeedle = self.m_canvas.create_image(150, 150,
-          image=self.m_photoNeedle)
 
+    #
+    # Canvas
+    #
+    self.m_canvas = Canvas(self, width=wSize[0], height=wSize[1])
+    self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
+
+    if self.m_photoDial is not None:
+      self.m_canvas.create_image(iOrigin, image=self.m_photoDial)
+    if self.m_photoNeedle is not None:
+      self.m_idNeedle = self.m_canvas.create_image(iOrigin,
+                                                image=self.m_photoNeedle)
+
+  #
   def rotate(self, angle):
     if self.m_imgNeedle is not None:
       img = self.m_imgNeedle.rotate(angle)
       self.m_photoNeedle = ImageTk.PhotoImage(img)
       self.m_canvas.itemconfig(self.m_idNeedle, image=self.m_photoNeedle)
 
+  #
   def testGauge(self):
     self.m_angle += 1.0
     print 'testGauge', self.m_angle
