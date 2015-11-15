@@ -110,12 +110,12 @@ class WarnDlg(Toplevel):
     else:
       self.m_title = "Warning"
     if kw.has_key('image'):
-      self.m_icons['image'] = imageLoader.load(kw['image'])
+      self.m_icons['image'] = imageLoader.loadImage(kw['image'])
       del kw['image']
     else:
       self.m_icons['image'] = None
     if self.m_icons['image'] is None:
-      self.m_icons['image'] = imageLoader.load('icons/icon_warning.png')
+      self.m_icons['image'] = imageLoader.loadImage('icons/icon_warning.png')
     if kw.has_key('msg'):
       self.m_msg = kw['msg']
       del kw['msg']

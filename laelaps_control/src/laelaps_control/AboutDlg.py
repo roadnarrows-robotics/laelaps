@@ -141,7 +141,7 @@ class AboutDlg(Toplevel):
     frame = Frame(self)
     frame.grid(row=0, column=0)
 
-    self.m_icons['laelaps_logo'] = imageLoader.load("LaelapsLogo.png")
+    self.m_icons['laelaps_logo'] = imageLoader.loadImage("LaelapsLogo.png")
 
     # top heading
     w = Label(frame)

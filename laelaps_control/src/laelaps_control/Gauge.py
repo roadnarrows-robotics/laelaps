@@ -77,6 +77,7 @@ class Dial(Frame):
     self.m_gaugeValMax    = 100.0     ## gauge maximum value
     self.m_gaugeValHome   = 0.0       ## gauge home value
     self.m_gaugeValFmt    = "%.1f"    ## gauge value display format
+    self.m_gaugeTextColor = "#ff8822" ## gauge label and value display color
     self.m_gaugeSize      = 300       ## gauge size (pixels)
     self.m_gaugeRes       = 1.0       ## gauge needle resolution (degrees)
     self.m_gaugeMovingWin = 1         ## moving window smoothing size 
@@ -106,6 +107,8 @@ class Dial(Frame):
         self.m_gaugeValHome = float(v)
       elif k == "gauge_val_fmt":
         self.m_gaugeValFmt = str(v)
+      elif k == "gauge_text_color":
+        self.m_gaugeTextColor = str(v)
       elif k == "gauge_size":
         self.m_gaugeSize = int(v)
       elif k == "gauge_res":
@@ -136,6 +139,8 @@ class Dial(Frame):
   #
   def repurpose(self, **kw):
     self.configGauge(kw)
+    self.m_canvas.itemconfig(self.m_idLabel, fill=self.m_gaugeTextColor)
+    self.m_canvas.itemconfig(self.m_idValue, fill=self.m_gaugeTextColor)
     self.showLabel(self.m_gaugeLabel)
     if self.m_gaugeShowVal:
       self.showValue(self.m_value)
@@ -203,7 +208,7 @@ class Dial(Frame):
     # dial label
     origin = (iOrigin[0], wSize[1]*0.82)
     self.m_idLabel = self.m_canvas.create_text(origin, text="",
-                                   font=helv, fill="#ff8822", justify=CENTER)
+                font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
     if len(self.m_gaugeLabel) > 0:
       self.m_canvas.itemconfig(self.m_idLabel, text=self.m_gaugeLabel)
@@ -211,7 +216,7 @@ class Dial(Frame):
     # dial numeric value
     origin = (iOrigin[0], wSize[1]*0.70)
     self.m_idValue = self.m_canvas.create_text(origin, text="",
-                                   font=helv, fill="#ff8822", justify=CENTER)
+                font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
     if self.m_gaugeShowVal:
       s = self.m_gaugeValFmt % (self.m_value)
@@ -303,7 +308,7 @@ if __name__ == '__main__':
 
   def testRepurp():
     DialExtern.repurpose(gauge_label="Power", gauge_val_max=225.0,
-        gauge_val_fmt="%.1f")
+        gauge_val_fmt="%.1f", gauge_text_color="#ffffff")
 
   root = Tk()
 
@@ -323,7 +328,7 @@ if __name__ == '__main__':
   dialOne.grid(row=0, column=1);
   dialSpeed = Dial(master=win,
       gauge_val_min=-12000, gauge_val_max=12000, gauge_val_home=0,
-      gauge_size=75, gauge_res=0.5, gauge_label="Speed",
+      gauge_size=100, gauge_res=0.5, gauge_label="Speed",
       gauge_show_val=True, gauge_moving_win=4)
   dialSpeed.grid(row=0, column=2);
 
