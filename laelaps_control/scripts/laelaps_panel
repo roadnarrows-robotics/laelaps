@@ -177,7 +177,7 @@ class window(Frame):
   def createHeading(self):
     # rn logo
     w = Label(self)
-    self.m_icons['rn_logo'] = self.m_imageLoader.load("RNLogo48.png");
+    self.m_icons['rn_logo'] = self.m_imageLoader.loadImage("RNLogo48.png");
     if self.m_icons['rn_logo']:
       w['image'] = self.m_icons['rn_logo']
     else:
@@ -196,7 +196,7 @@ class window(Frame):
     # laelaps logo
     w = Label(self)
     self.m_icons['laelaps_logo'] = \
-        self.m_imageLoader.load("icons/icon_laelaps_logo.png");
+        self.m_imageLoader.loadImage("icons/icon_laelaps_logo.png");
     if self.m_icons['laelaps_logo']:
       w['image'] = self.m_icons['laelaps_logo']
       w['anchor'] = E
@@ -383,11 +383,11 @@ class window(Frame):
     wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+E)
 
     self.m_icons['led_dark']  = \
-        self.m_imageLoader.load("icons/icon_led_dark_16.png")
+        self.m_imageLoader.loadImage("icons/icon_led_dark_16.png")
     self.m_icons['led_green'] = \
-        self.m_imageLoader.load("icons/icon_led_green_16.png")
+        self.m_imageLoader.loadImage("icons/icon_led_green_16.png")
     self.m_icons['led_red']   = \
-        self.m_imageLoader.load("icons/icon_led_red_16.png")
+        self.m_imageLoader.loadImage("icons/icon_led_red_16.png")
 
     row = 0
     col = 0
@@ -505,7 +505,7 @@ class window(Frame):
 
     # Center top-down view
     self.m_icons['laelaps_top_down'] = \
-        self.m_imageLoader.load("LaelapsTopDown300.png")
+        self.m_imageLoader.loadImage("LaelapsTopDown300.png")
 
     w = Canvas(wframe, width=300, height=300)
     w.grid(row=0, column=1, rowspan=2, padx=0, pady=0, sticky=E+W)
@@ -681,7 +681,7 @@ class window(Frame):
                                   fg='red')
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_icons['estop_reset'] = \
-        self.m_imageLoader.load("icons/icon_estop_reset.png")
+        self.m_imageLoader.loadImage("icons/icon_estop_reset.png")
 
     # freeze
     row += 1
@@ -761,7 +761,7 @@ class window(Frame):
   #
   def createButton(self, parent, text, imagefile, command, fg='black'):
     key = str.lower(text.replace("\n", "_"))
-    self.m_icons[key] = self.m_imageLoader.load(imagefile)
+    self.m_icons[key] = self.m_imageLoader.loadImage(imagefile)
     w = Button(parent)
     w['text']     = text
     if self.m_icons[key]:
@@ -792,7 +792,7 @@ class window(Frame):
     self.showInfo("Moving forward.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [10.0, 10.0, 10.0, 10.0]
+    cmd.velocities = [20.0, 20.0, 20.0, 20.0]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -802,7 +802,7 @@ class window(Frame):
     self.showInfo("Moving back.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [-10.0, -10.0, -10.0, -10.0]
+    cmd.velocities = [-20.0, -20.0, -20.0, -20.0]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -812,7 +812,7 @@ class window(Frame):
     self.showInfo("Spinning left.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [-10.0, -10.0, 10.0, 10.0]
+    cmd.velocities = [-20.0, -20.0, 20.0, 20.0]
     self.resetBrake()
     cmd = move()
     cmd.units.e = Units.UNITS_NORM
@@ -827,7 +827,7 @@ class window(Frame):
     self.showInfo("Spinning right.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [10.0, 10.0, -10.0, -10.0]
+    cmd.velocities = [20.0, 20.0, -20.0, -20.0]
     self.resetBrake()
     cmd = move()
     cmd.units.e = Units.UNITS_NORM

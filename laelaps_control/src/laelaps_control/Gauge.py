@@ -31,6 +31,7 @@
 import sys
 import os
 import time
+import random
 
 from Tkinter import *
 from Tkconstants import *
@@ -48,6 +49,10 @@ from laelaps_control.Utils import *
 ## \brief Laelaps about dialog.
 ##
 class Dial(Frame):
+  GaugeMinAngle = -135
+  GaugeMaxAngle =  135
+  GaugeRange    =  GaugeMaxAngle - GaugeMinAngle
+
   #
   ## \brief Constructor.
   ##
@@ -55,46 +60,85 @@ class Dial(Frame):
   ## \param kw      Keyword options.
   #
   def __init__(self, master=None, cnf={}, **kw):
-    # initialize dialog data
-    kw = self.initData(kw)
+    self.setDefaults()
+
+    kw = self.configGauge(kw)
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
 
     self.createGauge()
 
   #
-  ## \brief Initialize class state data.
+  def setDefaults(self):
+    # defaults
+    self.m_gaugeLabel     = ""        ## show fixed label on gauge face
+    self.m_gaugeShowVal   = False     ## do [not] show value on gauge face
+    self.m_gaugeValMin    = 0.0       ## gauge minimum value
+    self.m_gaugeValMax    = 100.0     ## gauge maximum value
+    self.m_gaugeValHome   = 0.0       ## gauge home value
+    self.m_gaugeValFmt    = "%.1f"    ## gauge value display format
+    self.m_gaugeSize      = 300       ## gauge size (pixels)
+    self.m_gaugeRes       = 1.0       ## gauge needle resolution (degrees)
+    self.m_gaugeMovingWin = 1         ## moving window smoothing size 
+    self.m_gaugeImgDial   = 'GaugeDialGreenRed.png' # dial image file name
+    self.m_gaugeImgNeedle = 'GaugeNeedleWhite.png'  # needle image file name
+
+  #
+  ## \brief Configure gauge from keyword option values.
   ##
   ## \param kw      Keyword options.
   ##
-  ## \return Modified keywords sans this specific class.
+  ## \return Modified keywords sans this specific class keywords.
   ##
-  def initData(self, kw):
-    # defaults
-    self.m_gaugeLabel     = ""
-    self.m_gaugeShowVal   = False
-    self.m_gaugeMin       = 0
-    self.m_gaugeMax       = 100
-    self.m_gaugeHome      = 0
-    self.m_gaugeSize      = 300
+  def configGauge(self, kw):
+    passthru = {}
 
     for k,v in kw.iteritems():
       if k == "gauge_label":
-        self.m_gaugeLabel = v
+        self.m_gaugeLabel = str(v)
       elif k == "gauge_show_val":
-        self.m_gaugeMin = v
-      elif k == "gauge_min":
-        self.m_gaugeMin = v
-      elif k == "gauge_max":
-        self.m_gaugeMax = v
-      elif k == "gauge_home":
-        self.m_gaugeHome = v
+        self.m_gaugeShowVal = bool(v)
+      elif k == "gauge_val_min":
+        self.m_gaugeValMin = float(v)
+      elif k == "gauge_val_max":
+        self.m_gaugeValMax = float(v)
+      elif k == "gauge_val_home":
+        self.m_gaugeValHome = float(v)
+      elif k == "gauge_val_fmt":
+        self.m_gaugeValFmt = str(v)
       elif k == "gauge_size":
-        self.m_gaugeSize = v
+        self.m_gaugeSize = int(v)
+      elif k == "gauge_res":
+        self.m_gaugeRes = float(v)
+      elif k == "gauge_moving_win":
+        self.m_gaugeMovingWin = int(v)
+      elif k == "gauge_dial_image":
+        self.m_gaugeImgDial = v
+      elif k == "gauge_needle_image":
+        self.m_gaugeImgNeedle = v
       else:
-        continue
-      del kw[k]
-    return kw
+        passthru[k] = v
+
+    self.m_gaugeValRange = self.m_gaugeValMax - self.m_gaugeValMin
+    self.m_value  = self.m_gaugeValHome
+    self.m_filter = self.m_gaugeMovingWin * [self.m_value/self.m_gaugeMovingWin]
+    self.m_angle  = self.toGauge(self.m_value)
+    self.m_dir    = 1
+
+    return passthru
+
+  #
+  ## \brief Partial repurposing of the dial.
+  ##
+  ## The gauge dial images and sizes do not change.
+  ##
+  ## \param kw      Keyword options.
+  #
+  def repurpose(self, **kw):
+    self.configGauge(kw)
+    self.showLabel(self.m_gaugeLabel)
+    if self.m_gaugeShowVal:
+      self.showValue(self.m_value)
 
   #
   ## \brief Create gui widgets with supporting data and show.
@@ -106,12 +150,11 @@ class Dial(Frame):
     iOrigin             = (wSize[0]/2, wSize[1]/2)
     self.m_photoDial    = None
     self.m_photoNeedle  = None
-    self.m_angle        = 0.0
 
     #
     # Dial face
     #
-    self.m_imgDial = imageLoader.openImage("GaugeDialGreenRed.png")
+    self.m_imgDial = imageLoader.openImage(self.m_gaugeImgDial)
 
     if self.m_imgDial is not None:
       imgSize = self.m_imgDial.size
@@ -125,14 +168,14 @@ class Dial(Frame):
     #
     # Dial needle
     #
-    self.m_imgNeedle = imageLoader.openImage("GaugeNeedleWhite.png")
+    self.m_imgNeedle = imageLoader.openImage(self.m_gaugeImgNeedle)
 
     if self.m_imgNeedle is not None:
       self.m_imgNeedle = self.m_imgNeedle.convert('RGBA')
       if scale != 1.0:
-        imgSize = self.m_imgDial.size
+        imgSize = self.m_imgNeedle.size
         size = (int(imgSize[0] * scale), int(imgSize[1] * scale))
-        self.m_imgDial = self.m_imgDial.resize(size, Image.BICUBIC)
+        self.m_imgNeedle = self.m_imgNeedle.resize(size, Image.BICUBIC)
       self.m_photoNeedle = ImageTk.PhotoImage(self.m_imgNeedle)
 
     #
@@ -141,31 +184,127 @@ class Dial(Frame):
     self.m_canvas = Canvas(self, width=wSize[0], height=wSize[1])
     self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
 
+    # dial face
     if self.m_photoDial is not None:
       self.m_canvas.create_image(iOrigin, image=self.m_photoDial)
+
+    # dial needle
     if self.m_photoNeedle is not None:
       self.m_idNeedle = self.m_canvas.create_image(iOrigin,
                                                 image=self.m_photoNeedle)
 
+    fontSize = int(20.0 * scale) 
+    if fontSize <= 10:
+      fontWeight = "normal"
+    else:
+      fontWeight = "bold"
+    helv = tkFont.Font(family="Helvetica", size=fontSize, weight=fontWeight)
+
+    # dial label
+    origin = (iOrigin[0], wSize[1]*0.82)
+    self.m_idLabel = self.m_canvas.create_text(origin, text="",
+                                   font=helv, fill="#ff8822", justify=CENTER)
+
+    if len(self.m_gaugeLabel) > 0:
+      self.m_canvas.itemconfig(self.m_idLabel, text=self.m_gaugeLabel)
+
+    # dial numeric value
+    origin = (iOrigin[0], wSize[1]*0.70)
+    self.m_idValue = self.m_canvas.create_text(origin, text="",
+                                   font=helv, fill="#ff8822", justify=CENTER)
+
+    if self.m_gaugeShowVal:
+      s = self.m_gaugeValFmt % (self.m_value)
+      self.m_canvas.itemconfig(self.m_idValue, text=s)
+
+  #
+  def update(self, val):
+    a = self.toGauge(val)
+    #print 'val,angle', val, a
+    self.rotate(a)
+    if self.m_gaugeShowVal:
+      self.showValue(self.m_value)
+
+  #
+  def toGauge(self, val):
+    if val < self.m_gaugeValMin:
+      val = self.m_gaugeValMin
+    elif val > self.m_gaugeValMax:
+      val = self.m_gaugeValMax
+    self.m_value = self.smooth(val)
+    # 0.0 - 1.0
+    r = (self.m_value - self.m_gaugeValMin) / self.m_gaugeValRange
+    # 135, -135
+    return Dial.GaugeMaxAngle - Dial.GaugeRange * r
+
+  #
+  def smooth(self, val):
+    if self.m_gaugeMovingWin <= 1:
+      return float(val)
+    else:
+      lastVal = self.m_filter.pop(self.m_gaugeMovingWin - 1)
+      newVal  = float(val) / self.m_gaugeMovingWin
+      val     = self.m_value + newVal - lastVal
+      self.m_filter.insert(0, newVal)
+      return val
+
   #
   def rotate(self, angle):
+    #print 'angle', angle
+    if (angle >= self.m_angle - self.m_gaugeRes/2.0) and \
+       (angle <= self.m_angle + self.m_gaugeRes/2.0):
+      return
     if self.m_imgNeedle is not None:
       img = self.m_imgNeedle.rotate(angle)
       self.m_photoNeedle = ImageTk.PhotoImage(img)
       self.m_canvas.itemconfig(self.m_idNeedle, image=self.m_photoNeedle)
+    self.m_angle = angle
+
+  #
+  def showValue(self, val):
+    s = self.m_gaugeValFmt % (self.m_value)
+    self.m_canvas.itemconfig(self.m_idValue, text=s)
+
+  #
+  def showLabel(self, text):
+    if len(self.m_gaugeLabel) > 0:
+      self.m_canvas.itemconfig(self.m_idLabel, text=self.m_gaugeLabel)
+    else:
+      self.m_canvas.itemconfig(self.m_idLabel, text="")
 
   #
   def testGauge(self):
-    self.m_angle += 1.0
-    print 'testGauge', self.m_angle
-    self.rotate(self.m_angle)
+    if random.random() > 0.75:
+      val = random.uniform(self.m_gaugeValMin, self.m_gaugeValMax)
+      #print 'random1', val
+    else:
+      val = random.uniform(self.m_value-5.0, self.m_value+5.0)
+      #print 'random2', val
+    self.update(val)
     self.master.after(1000, self.testGauge)
+
+  #
+  def testGaugeRange(self, inc=5.0):
+    if (self.m_dir > 0) and (self.m_angle+inc > Dial.GaugeMaxAngle):
+      self.m_dir = -1
+    elif (self.m_dir < 0) and (self.m_angle-inc < Dial.GaugeMinAngle):
+      self.m_dir = 1
+    a = self.m_angle + self.m_dir * inc
+    self.rotate(a)
+    self.master.after(1000, self.testGaugeRange)
+
 
 # ------------------------------------------------------------------------------
 # Guage Unit Test
 # ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
+  DialExtern = None
+
+  def testRepurp():
+    DialExtern.repurpose(gauge_label="Power", gauge_val_max=225.0,
+        gauge_val_fmt="%.1f")
+
   root = Tk()
 
   root.protocol('WM_DELETE_WINDOW', root.destroy)
@@ -174,9 +313,26 @@ if __name__ == '__main__':
   win.master.title("Gauge Unit Test")
   win.grid(row=0, column=0)
 
-  dial = Dial(master=win)
-  dial.grid(row=0, column=0);
+  dialDft = Dial(master=win,
+      gauge_label="Gauge Dft", gauge_show_val=True, gauge_val_fmt="%d");
+  dialDft.grid(row=0, column=0),
+  dialOne = Dial(master=win,
+      gauge_val_min=-100, gauge_val_max=100, gauge_val_home=0,
+      gauge_size=150, gauge_res=0.5, gauge_label="GaugeOne",
+      gauge_show_val=True, gauge_moving_win=4)
+  dialOne.grid(row=0, column=1);
+  dialSpeed = Dial(master=win,
+      gauge_val_min=-12000, gauge_val_max=12000, gauge_val_home=0,
+      gauge_size=75, gauge_res=0.5, gauge_label="Speed",
+      gauge_show_val=True, gauge_moving_win=4)
+  dialSpeed.grid(row=0, column=2);
 
-  dial.testGauge()
+  #dial.testGaugeRange()
+  #dialDft.testGauge()
+  win.after(1000, dialDft.testGauge)
+  win.after(1000, dialOne.testGauge)
+  win.after(1000, dialSpeed.testGauge)
+  DialExtern = dialDft
+  win.after(10000, testRepurp)
 
   win.mainloop()
