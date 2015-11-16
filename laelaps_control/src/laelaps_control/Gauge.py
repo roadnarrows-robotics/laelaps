@@ -319,19 +319,23 @@ if __name__ == '__main__':
 
   win = Frame(root)
   win.master.title("Gauge Unit Test")
-  win.grid(row=0, column=0)
+  win.grid(row=0, column=0, padx=5, pady=5)
 
-  dialDft = Dial(master=win,
+  #
+  # (Near) Defaults
+  #
+  dialDft = Dial(win,
       gauge_label="Gauge Dft", gauge_show_val=True, gauge_val_fmt="%d");
   dialDft.grid(row=0, column=0),
 
   #
   # Dashboard
   #
-  wframe = Frame(win, relief="ridge", borderwidth=3)
+  wframe = LabelFrame(win, text="DashBoard", fg="#0000aa", relief="ridge",
+      borderwidth=3)
   wframe.grid(row=0, column=1)
 
-  dialPower = Dial(master=wframe,
+  dialPower = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
       gauge_size=150, gauge_res=0.5, gauge_label="watts",
       gauge_show_val=True, gauge_moving_win=4,
@@ -340,7 +344,16 @@ if __name__ == '__main__':
       gauge_text_color="#ffffff")
   dialPower.grid(row=0, column=0);
 
-  dialTemp = Dial(master=wframe,
+  dialSpeed = Dial(wframe,
+      gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
+      gauge_size=150, gauge_res=0.5, gauge_label="m/s",
+      gauge_show_val=True, gauge_moving_win=4,
+      gauge_dial_image="GaugeDialGreenRed.png",
+      gauge_needle_image="GaugeNeedleWhite.png",
+      gauge_text_color="#ffffff")
+  dialSpeed.grid(row=0, column=1);
+
+  dialTemp = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
       gauge_size=100, gauge_res=0.5, gauge_label=u"C\u00b0",
       gauge_show_val=True, gauge_moving_win=4,
@@ -349,15 +362,34 @@ if __name__ == '__main__':
       gauge_text_color="#ffffff")
   dialTemp.grid(row=1, column=0);
 
-  dialSpeed = Dial(master=wframe,
-      gauge_val_min=0.0, gauge_val_max=300.0, gauge_val_home=0,
-      gauge_size=150, gauge_res=0.5, gauge_label="m/s",
+  #
+  # Powertrain
+  #
+  wframe = LabelFrame(win, text="Powertrain", fg="#0000aa", relief="ridge",
+      borderwidth=3)
+  wframe.grid(row=0, column=2)
+
+  dialPtPower = Dial(wframe,
+      gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
+      gauge_size=100, gauge_res=0.5, gauge_label="watts",
       gauge_show_val=True, gauge_moving_win=4,
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialSpeed.grid(row=0, column=1);
+  dialPtPower.grid(row=0, column=0);
 
+  dialPtSpeed = Dial(wframe,
+      gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
+      gauge_size=100, gauge_res=0.5, gauge_label="qpps",
+      gauge_show_val=True, gauge_moving_win=4,
+      gauge_dial_image="GaugeDialRedGreenRed.png",
+      gauge_needle_image="GaugeNeedleWhite.png",
+      gauge_text_color="#ffffff")
+  dialPtSpeed.grid(row=0, column=1);
+
+  #
+  # Test operaton
+  #
   #dial.testGaugeRange()
   #dialDft.testGauge()
   win.after(1000, dialDft.testGauge)
@@ -366,5 +398,6 @@ if __name__ == '__main__':
 
   DialExtern = dialDft
   win.after(10000, testRepurp)
+
 
   win.mainloop()
