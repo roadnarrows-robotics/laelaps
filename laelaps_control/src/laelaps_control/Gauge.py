@@ -82,7 +82,7 @@ class Dial(Frame):
     self.m_gaugeRes       = 1.0       ## gauge needle resolution (degrees)
     self.m_gaugeMovingWin = 1         ## moving window smoothing size 
     self.m_gaugeImgDial   = 'GaugeDialGreenRed.png' # dial image file name
-    self.m_gaugeImgNeedle = 'GaugeNeedleWhite.png'  # needle image file name
+    self.m_gaugeImgNeedle = 'GaugeNeedleAmber.png'  # needle image file name
 
   #
   ## \brief Configure gauge from keyword option values.
@@ -96,7 +96,7 @@ class Dial(Frame):
 
     for k,v in kw.iteritems():
       if k == "gauge_label":
-        self.m_gaugeLabel = str(v)
+        self.m_gaugeLabel = v
       elif k == "gauge_show_val":
         self.m_gaugeShowVal = bool(v)
       elif k == "gauge_val_min":
@@ -198,7 +198,10 @@ class Dial(Frame):
       self.m_idNeedle = self.m_canvas.create_image(iOrigin,
                                                 image=self.m_photoNeedle)
 
-    fontSize = int(20.0 * scale) 
+    if scale > 0.35:
+      fontSize = int(20.0 * scale) 
+    else:
+      fontSize = int(24.0 * scale) 
     if fontSize <= 10:
       fontWeight = "normal"
     else:
@@ -260,7 +263,7 @@ class Dial(Frame):
        (angle <= self.m_angle + self.m_gaugeRes/2.0):
       return
     if self.m_imgNeedle is not None:
-      img = self.m_imgNeedle.rotate(angle)
+      img = self.m_imgNeedle.rotate(angle, resample=Image.BICUBIC)
       self.m_photoNeedle = ImageTk.PhotoImage(img)
       self.m_canvas.itemconfig(self.m_idNeedle, image=self.m_photoNeedle)
     self.m_angle = angle
@@ -308,7 +311,7 @@ if __name__ == '__main__':
 
   def testRepurp():
     DialExtern.repurpose(gauge_label="Power", gauge_val_max=225.0,
-        gauge_val_fmt="%.1f", gauge_text_color="#ffffff")
+        gauge_val_fmt="%.1f")
 
   root = Tk()
 
@@ -321,22 +324,46 @@ if __name__ == '__main__':
   dialDft = Dial(master=win,
       gauge_label="Gauge Dft", gauge_show_val=True, gauge_val_fmt="%d");
   dialDft.grid(row=0, column=0),
-  dialOne = Dial(master=win,
-      gauge_val_min=-100, gauge_val_max=100, gauge_val_home=0,
-      gauge_size=150, gauge_res=0.5, gauge_label="GaugeOne",
-      gauge_show_val=True, gauge_moving_win=4)
-  dialOne.grid(row=0, column=1);
-  dialSpeed = Dial(master=win,
-      gauge_val_min=-12000, gauge_val_max=12000, gauge_val_home=0,
-      gauge_size=100, gauge_res=0.5, gauge_label="Speed",
-      gauge_show_val=True, gauge_moving_win=4)
-  dialSpeed.grid(row=0, column=2);
+
+  #
+  # Dashboard
+  #
+  wframe = Frame(win, relief="ridge", borderwidth=3)
+  wframe.grid(row=0, column=1)
+
+  dialPower = Dial(master=wframe,
+      gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
+      gauge_size=150, gauge_res=0.5, gauge_label="watts",
+      gauge_show_val=True, gauge_moving_win=4,
+      gauge_dial_image="GaugeDialGreenRed.png",
+      gauge_needle_image="GaugeNeedleWhite.png",
+      gauge_text_color="#ffffff")
+  dialPower.grid(row=0, column=0);
+
+  dialTemp = Dial(master=wframe,
+      gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
+      gauge_size=100, gauge_res=0.5, gauge_label=u"C\u00b0",
+      gauge_show_val=True, gauge_moving_win=4,
+      gauge_dial_image="GaugeDialBlueRed.png",
+      gauge_needle_image="GaugeNeedleWhite.png",
+      gauge_text_color="#ffffff")
+  dialTemp.grid(row=1, column=0);
+
+  dialSpeed = Dial(master=wframe,
+      gauge_val_min=0.0, gauge_val_max=300.0, gauge_val_home=0,
+      gauge_size=150, gauge_res=0.5, gauge_label="m/s",
+      gauge_show_val=True, gauge_moving_win=4,
+      gauge_dial_image="GaugeDialGreenRed.png",
+      gauge_needle_image="GaugeNeedleWhite.png",
+      gauge_text_color="#ffffff")
+  dialSpeed.grid(row=0, column=1);
 
   #dial.testGaugeRange()
   #dialDft.testGauge()
   win.after(1000, dialDft.testGauge)
-  win.after(1000, dialOne.testGauge)
+  win.after(1000, dialPower.testGauge)
   win.after(1000, dialSpeed.testGauge)
+
   DialExtern = dialDft
   win.after(10000, testRepurp)
 
