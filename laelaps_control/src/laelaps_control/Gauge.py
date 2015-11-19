@@ -329,7 +329,8 @@ class Counter(Frame):
   #
   def setDefaults(self):
     # defaults
-    self.m_gaugeLabel     = ""        ## show fixed label on gauge face
+    self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
+    self.m_gaugeTextColor = "#000000" ## gauge label display color
     self.m_gaugeValMin    = 0.0       ## gauge minimum value
     self.m_gaugeValMax    = 100.0     ## gauge maximum value
     self.m_gaugeValHome   = 0.0       ## gauge home value
@@ -350,6 +351,8 @@ class Counter(Frame):
     for k,v in kw.iteritems():
       if k == "gauge_label":
         self.m_gaugeLabel = v
+      elif k == "gauge_text_color":
+        self.m_gaugeTextColor = str(v)
       elif k == "gauge_val_min":
         self.m_gaugeValMin = float(v)
       elif k == "gauge_val_max":
@@ -385,9 +388,6 @@ class Counter(Frame):
   def createGauge(self):
     imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
     chkSize             = False
-
-    wSize               = (200, 300)
-    iOrigin             = (wSize[0]/2, wSize[1]/2)
 
     #
     # Counter blank
@@ -451,20 +451,28 @@ class Counter(Frame):
     if self.m_hasSign:
       width += size[0]
     if self.m_numFDigits > 0:
-      dpwidth = int(size[0] * 0.25)   # decimal point width
-      dpmargin = 2                    # decimal point margin
-      width += dpwidth + 2 * dpmargin + size[0] * self.m_numFDigits
+      dpWidth = int(size[0] * 0.25)   # decimal point width
+      dpMargin = 2                    # decimal point margin
+      width += dpWidth + 2 * dpMargin + size[0] * self.m_numFDigits
 
-    #if scale > 0.35:
-    #  fontSize = int(20.0 * scale) 
-    #else:
-    #  fontSize = int(24.0 * scale) 
-    #if fontSize <= 10:
-    #  fontWeight = "normal"
-    #else:
-    #  fontWeight = "bold"
-    #helv = tkFont.Font(family="Helvetica", size=fontSize, weight=fontWeight)
+    if len(self.m_gaugeLabel) > 0:
+      label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
+      scale = width / label_width * 0.90
+      fontSize = int(13.0 * scale) 
+      if fontSize <= 10:
+        fontWeight = "normal"
+      else:
+        fontWeight = "bold"
+      fontMargin  = 1
+      helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
+      height += fontSize + 2 * fontMargin
+    else:
+      fontSize    = 0
+      fontMargin  = 0
 
+    #
+    # Canvas
+    #
     self.m_canvas = Canvas(self, width=width, height=height)
     self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
 
@@ -478,39 +486,43 @@ class Counter(Frame):
       self.m_tumbler['sign'] = '+'
       x += size[0]
 
+    place = self.m_numIDigits - 1
     for i in range(0, self.m_numIDigits):
       origin  = (x, y)
-      self.m_idImg[i] = self.m_canvas.create_image(origin,
+      self.m_idImg[place] = self.m_canvas.create_image(origin,
                                                 image=self.m_photo[0])
-      self.m_tumbler[i] = 0
+      self.m_tumbler[place] = 0
+      #print 'i', place
       x  += size[0]
+      place -= 1
 
     if self.m_numFDigits > 0:
-      x1 = x - size[0]/2 + dpmargin
-      y1 = height - dpwidth - dpmargin
-      x2 = x1 + dpwidth
-      y2 = height - dpmargin
+      h  = size[1]
+      x1 = x - size[0]/2 + dpMargin
+      y1 = h - dpWidth - dpMargin
+      x2 = x1 + dpWidth
+      y2 = h - dpMargin
       self.m_canvas.create_oval(x1, y1, x2, y2, fill="#333333")
-      x = x2 + dpmargin + size[0]/2
+      x = x2 + dpMargin + size[0]/2
 
+    place = -1
     for i in range(0, self.m_numFDigits):
       origin  = (x, y)
-      key = "0.%0*d" % (i, 1) 
-      self.m_idImg[key] = self.m_canvas.create_image(origin,
+      #print 'f', place
+      self.m_idImg[place] = self.m_canvas.create_image(origin,
                                                 image=self.m_photo[0])
-      self.m_tumbler[key] = 0
+      self.m_tumbler[place] = 0
       x  += size[0]
+      place -= 1
 
     #print self.m_idImg.keys()
-    print self.m_tumbler.keys()
+    #print self.m_tumbler.keys()
 
     # counter label
-    #origin = (iOrigin[0], wSize[1]*0.82)
-    #self.m_idLabel = self.m_canvas.create_text(origin, text="",
-    #            font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
-
-    #if len(self.m_gaugeLabel) > 0:
-    #  self.m_canvas.itemconfig(self.m_idLabel, text=self.m_gaugeLabel)
+    if len(self.m_gaugeLabel) > 0:
+      origin = (width/2, height-(fontSize+fontMargin)/2)
+      self.m_idLabel = self.m_canvas.create_text(origin, text=self.m_gaugeLabel,
+                font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
     self.m_isCreated  = True
 
@@ -549,28 +561,38 @@ class Counter(Frame):
         self.m_tumbler['sign'] = sign
 
     # integer part
+    place = 0
     for i in range(0, self.m_numIDigits):
       tmp   = iPart/10
       d     = iPart - tmp * 10
       iPart = tmp
-      pos   = self.m_numIDigits - i - 1
-      if self.m_tumbler[pos] != d:
-        self.m_canvas.itemconfig(self.m_idImg[pos], image=self.m_photo[d])
-        self.m_tumbler[pos] = d
+      if self.m_tumbler[place] != d:
+        self.m_canvas.itemconfig(self.m_idImg[place], image=self.m_photo[d])
+        self.m_tumbler[place] = d
+      place += 1
 
     # faction part
+    place = -1
     for i in range(0, self.m_numFDigits):
-      fPart = fPart * 10.0
-      d = int(fPart)
-      if self.m_tumbler[i] != d:
-        self.m_canvas.itemconfig(self.m_idImg[i], image=self.m_photo[d])
-        self.m_tumbler[i] = d
+      tmp = fPart * 10.0
+      d = int(tmp)
+      fPart = tmp - d
+      if self.m_tumbler[place] != d:
+        self.m_canvas.itemconfig(self.m_idImg[place], image=self.m_photo[d])
+        self.m_tumbler[place] = d
+      place -= 1
 
   #
   def testGauge(self):
     val = random.uniform(self.m_gaugeValMin, self.m_gaugeValMax)
     self.update(val)
     self.master.after(1000, self.testGauge)
+
+  #
+  def testGaugeCountingUp(self):
+    delta = random.uniform(0.0, 100.0)
+    self.update(self.m_value+delta)
+    self.master.after(1000, self.testGaugeCountingUp)
 
 
 # ------------------------------------------------------------------------------
@@ -641,7 +663,8 @@ if __name__ == '__main__':
   dialTemp.grid(row=1, column=0);
 
   counterMeters = Counter(wframe, gauge_size=(20, 30),
-      gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01)
+      gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
+      gauge_label="meters")
   counterMeters.grid(row=1, column=1);
 
   #
@@ -684,7 +707,7 @@ if __name__ == '__main__':
   win.after(2033, dialSpeed.testGauge)
   win.after(1200, counterDft.testGauge)
   win.after(894, counterPulses.testGauge)
-  win.after(193, counterMeters.testGauge)
+  win.after(193, counterMeters.testGaugeCountingUp)
 
   DialExtern = dialDft
   win.after(10000, testRepurp)
