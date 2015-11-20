@@ -468,16 +468,17 @@ class Counter(Frame):
       canvasWidth += tumblerSize[0] * self.m_numFDigits
 
     if len(self.m_gaugeLabel) > 0:
-      label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
-      scale = canvasWidth / label_width * 0.90
-      fontSize = int(13.0 * scale) 
+      #label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
+      textLen = len(self.m_gaugeLabel)
+      fontMargin  = 1
+      fontSize = int(canvasHeight * 0.67)
       if fontSize <= 10:
         fontWeight = "normal"
       else:
         fontWeight = "bold"
-      fontMargin  = 1
+      labelWidth = textLen * fontSize + 2 * fontMargin
       helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
-      canvasHeight += fontSize + 2 * fontMargin
+      canvasWidth += labelWidth
     else:
       fontSize    = 0
       fontMargin  = 0
@@ -520,13 +521,6 @@ class Counter(Frame):
       self.m_idImg['.'] = self.m_canvas.create_image((x, y),
                                                 image=self.m_photo['.'])
       x += dotSize[0] / 2 + tumblerSize[0] / 2
-      #h  = size[1]
-      #x1 = x - size[0]/2 + dpMargin
-      #y1 = h - dpWidth - dpMargin
-      #x2 = x1 + dpWidth
-      #y2 = h - dpMargin
-      #self.m_canvas.create_oval(x1, y1, x2, y2, fill="#333333")
-      #x = x2 + dpMargin + size[0]/2
 
     # faction digits
     place = -1
@@ -543,8 +537,9 @@ class Counter(Frame):
 
     # counter label
     if len(self.m_gaugeLabel) > 0:
-      origin = (canvasWidth/2, canvasHeight-(fontSize+fontMargin)/2)
-      self.m_idLabel = self.m_canvas.create_text(origin, text=self.m_gaugeLabel,
+      x = canvasWidth - labelWidth/2
+      y = fontMargin + fontSize/2
+      self.m_idLabel = self.m_canvas.create_text((x, y), text=self.m_gaugeLabel,
                 font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
     self.m_isCreated  = True
@@ -818,6 +813,150 @@ class Battery(Frame):
 
 
 # ------------------------------------------------------------------------------
+# Class Indicator
+# ------------------------------------------------------------------------------
+
+#
+## \brief Laelaps indicator light gauge class.
+##
+class Indicator(Frame):
+
+  #
+  ## \brief Constructor.
+  ##
+  ## \param cnf     Configuration dictionary.
+  ## \param kw      Keyword options.
+  #
+  def __init__(self, master=None, cnf={}, **kw):
+    self.m_imgFileName = {
+      'gray':   'IndicatorGray.png',
+      'green':  'IndicatorGreen.png',
+      'yellow': 'IndicatorYellow.png',
+      'amber':  'IndicatorAmber.png',
+      'red':    'IndicatorRed.png',
+    }
+
+    self.m_indValues  = ['gray', 'green', 'yellow', 'amber', 'red']
+
+    self.m_img        = {}      ## loaded images
+    self.m_photo      = {}      ## converted to tkinter photo images
+    self.m_idIndImg   = None    ## canvas image ids
+    self.m_value      = 'gray'  ## battery charge value
+    self.m_fontText   = tkFont.Font(family="Helvetica", size=-11, weight="bold")
+    self.m_isCreated  = False   ## counter is [not] created
+
+    self.setDefaults()
+
+    kw = self.configGauge(kw)
+
+    Frame.__init__(self, master=master, cnf=cnf, **kw)
+
+    self.createGauge()
+
+  #
+  def setDefaults(self):
+    # defaults
+    self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
+    self.m_gaugeTextColor = "#ffffff" ## gauge label display color
+    self.m_gaugeValHome   = 'gray'    ## gauge home value
+    self.m_gaugeSize      = 48        ## gauge size (pixels)
+
+  #
+  ## \brief Configure gauge from keyword option values.
+  ##
+  ## \param kw      Keyword options.
+  ##
+  ## \return Modified keywords sans this specific class keywords.
+  ##
+  def configGauge(self, kw):
+    passthru = {}
+
+    for k,v in kw.iteritems():
+      if k == "gauge_label":
+        self.m_gaugeLabel = v
+      elif k == "gauge_text_color":
+        self.m_gaugeTextColor = str(v)
+      elif k == "gauge_size":
+        self.m_gaugeSize = int(v)
+      elif k == "gauge_val_home":
+        self.m_gaugeValHome = str(v)
+      else:
+        passthru[k] = v
+
+    self.m_value  = self.m_gaugeValHome
+
+    return passthru
+
+  #
+  ## \brief Create gui widgets.
+  #
+  def createGauge(self):
+    imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
+
+    #
+    # Load and transform battery images
+    #
+    for key,fname in self.m_imgFileName.iteritems():
+      self.m_img[key] = imageLoader.openImage(fname)
+      if self.m_img[key] is None:
+        print "Error: Gauge.Counter: Cannot open image %s." % (fname)
+        return
+      imgSize = self.m_img[key].size
+      if imgSize[0] != self.m_gaugeSize:
+        tgtSize = (self.m_gaugeSize, self.m_gaugeSize)
+        self.m_img[key] = self.m_img[key].resize(tgtSize, Image.BICUBIC)
+      self.m_photo[key] = ImageTk.PhotoImage(self.m_img[key])
+
+    canvasWidth   = imgSize[0]
+    canvasHeight  = imgSize[1]
+
+    #
+    # Canvas
+    #
+    self.m_canvas = Canvas(self, width=canvasWidth, height=canvasHeight)
+    self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
+
+    # indicator 
+    x = canvasWidth / 2
+    y = canvasHeight / 2
+
+    self.m_idIndImg = self.m_canvas.create_image((x, y),
+                                            image=self.m_photo[self.m_value])
+
+    # label
+    text = ''
+    if len(self.m_gaugeLabel) > 0:
+      text = self.m_gaugeLabel
+
+    x = canvasWidth/2
+    y = canvasHeight/2
+    self.m_idLabel = self.m_canvas.create_text((x, y), text=text,
+                font=self.m_fontText, justify=CENTER,
+                fill=self.m_gaugeTextColor)
+
+    self.m_isCreated  = True
+
+  #
+  def update(self, val, new_label=None):
+    if self.m_isCreated:
+      if val not in self.m_imgFileName.keys():
+        print "Warning: %s: unknown indicator." % (val)
+        val = 'gray'
+      if val != self.m_value:
+        self.m_canvas.itemconfig(self.m_idIndImg, image=self.m_photo[val])
+        self.m_value = val
+      if new_label is not None and (new_label != self.m_gaugeLabel):
+        self.m_canvas.itemconfig(self.m_idLabel, text=new_label)
+        self.m_gaugeLabel = new_label
+
+  #
+  def testGauge(self):
+    val = random.choice(self.m_imgFileName.keys())
+    self.update(val, val)
+    self.master.after(1000, self.testGauge)
+
+
+# ------------------------------------------------------------------------------
 # Guage Unit Test
 # ------------------------------------------------------------------------------
 
@@ -850,15 +989,15 @@ if __name__ == '__main__':
   counterDft = Counter(wframe, gauge_size=(100, 150))
   counterDft.grid(row=1, column=0);
 
+  indDft = Indicator(wframe, gauge_label='Test')
+  indDft.grid(row=0, column=4)
+
   #
   # Dashboard
   #
   wframe = LabelFrame(win, text="DashBoard", fg="#0000aa", relief="ridge",
       borderwidth=3)
   wframe.grid(row=0, column=1)
-
-  batt = Battery(wframe, gauge_size=(50, 75))
-  batt.grid(row=0, column=0, rowspan=2)
 
   dialPower = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
@@ -867,7 +1006,7 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialPower.grid(row=0, column=1);
+  dialPower.grid(row=0, column=0);
 
   dialSpeed = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
@@ -876,7 +1015,7 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialSpeed.grid(row=0, column=2);
+  dialSpeed.grid(row=0, column=1);
 
   dialTemp = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
@@ -885,12 +1024,38 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialBlueRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialTemp.grid(row=1, column=1);
+  dialTemp.grid(row=1, column=0);
 
-  counterMeters = Counter(wframe, gauge_size=(20, 30),
+  subframe = Frame(wframe, relief="flat")
+  subframe.grid(row=1, column=1)
+
+  counterMeters = Counter(subframe, gauge_size=(20, 30),
       gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
-      gauge_label="meters")
-  counterMeters.grid(row=1, column=2);
+      gauge_label="m")
+  counterMeters.grid(row=0, column=0);
+
+  counterTrip = Counter(subframe, gauge_size=(20, 30),
+      gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01,
+      gauge_label="trip")
+  counterTrip.grid(row=1, column=0);
+
+  batt = Battery(wframe, gauge_size=(75, 100))
+  batt.grid(row=0, column=3)
+
+  indMode = Indicator(wframe, gauge_label='Manual')
+  indMode.grid(row=0, column=4)
+
+  indMotors = Indicator(wframe, gauge_label='Motors')
+  indMotors.grid(row=1, column=4)
+
+  indMoving = Indicator(wframe, gauge_label='Moving')
+  indMoving.grid(row=0, column=5)
+
+  indMotors = Indicator(wframe, gauge_label='Alarms')
+  indMotors.grid(row=1, column=5)
+
+  indEStop = Indicator(wframe, gauge_label='EStop')
+  indEStop.grid(row=0, column=6)
 
   #
   # Powertrain
@@ -919,7 +1084,7 @@ if __name__ == '__main__':
 
   counterPulses = Counter(wframe, gauge_size=(10, 15),
       gauge_val_min=-4000000000, gauge_val_max=4000000000,
-      gauge_label="pulses")
+      gauge_label="p")
       #relief='ridge', borderwidth=1, bg="#000000")
   counterPulses.grid(row=1, column=0, columnspan=2);
 
@@ -929,12 +1094,15 @@ if __name__ == '__main__':
   #dial.testGaugeRange()
   #dialDft.testGauge()
   win.after(1000, dialDft.testGauge)
+  win.after(1200, counterDft.testGauge)
+  win.after(3013, indDft.testGauge)
+
   win.after(900, dialPower.testGauge)
   win.after(2033, dialSpeed.testGauge)
-  win.after(1200, counterDft.testGauge)
-  win.after(894, counterPulses.testGauge)
   win.after(193, counterMeters.testGaugeCountingUp)
   win.after(2193, batt.testGauge)
+
+  win.after(894, counterPulses.testGauge)
 
   DialExtern = dialDft
   win.after(10000, testRepurp)
