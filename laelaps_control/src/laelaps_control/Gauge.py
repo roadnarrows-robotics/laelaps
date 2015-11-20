@@ -46,7 +46,7 @@ from laelaps_control.Utils import *
 # ------------------------------------------------------------------------------
 
 #
-## \brief Laelaps about dialog.
+## \brief Laelaps dial gauge class
 ##
 class Dial(Frame):
   GaugeMinAngle = -135
@@ -146,7 +146,7 @@ class Dial(Frame):
       self.showValue(self.m_value)
 
   #
-  ## \brief Create gui widgets with supporting data and show.
+  ## \brief Create gui widgets.
   #
   def createGauge(self):
     imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
@@ -307,7 +307,7 @@ class Dial(Frame):
 # ------------------------------------------------------------------------------
 
 #
-## \brief Laelaps about dialog.
+## \brief Laelaps counter gauge class.
 ##
 class Counter(Frame):
 
@@ -318,6 +318,21 @@ class Counter(Frame):
   ## \param kw      Keyword options.
   #
   def __init__(self, master=None, cnf={}, **kw):
+    self.m_imgFileName = {
+      ' ':  'OdBlank.png', '-': 'OdMinus.png', '+': 'OdPlus.png',
+      '.':  'OdDot.png',
+      0: 'Od0.png', 1: 'Od1.png', 2: 'Od2.png', 3: 'Od3.png',
+      4: 'Od4.png', 5: 'Od5.png', 6: 'Od6.png', 7: 'Od7.png',
+      8: 'Od8.png', 9: 'Od9.png' }
+
+    self.m_img          = {}      ## loaded images
+    self.m_photo        = {}      ## converted to tkinter photo images
+    self.m_idImg        = {}      ## canvas image ids
+    self.m_tumbler      = {}      ## current counter tumbler values
+    self.m_numIDigits   = 2       ## number of integer part digits
+    self.m_numFDigits   = 0       ## number of fraction part digits
+    self.m_isCreated    = False   ## counter is [not] created
+
     self.setDefaults()
 
     kw = self.configGauge(kw)
@@ -367,23 +382,11 @@ class Counter(Frame):
         passthru[k] = v
 
     self.m_value  = self.m_gaugeValHome
-    self.m_imgFileName = {
-        ' ':  'OdBlank.png', '-': 'OdMinus.png', '+': 'OdPlus.png',
-        0: 'Od0.png', 1: 'Od1.png', 2: 'Od2.png', 3: 'Od3.png',
-        4: 'Od4.png', 5: 'Od5.png', 6: 'Od6.png', 7: 'Od7.png',
-        8: 'Od8.png', 9: 'Od9.png'}
-    self.m_img          = {}      ## loaded images
-    self.m_photo        = {}      ## converted to tkinter photo images
-    self.m_idImg        = {}      ## canvas image ids
-    self.m_tumbler      = {}      ## current counter tumbler values
-    self.m_numIDigits   = 2       ## number of integer part digits
-    self.m_numFDigits   = 0       ## number of fraction part digits
-    self.m_isCreated    = False   ## counter is [not] created
 
     return passthru
 
   #
-  ## \brief Create gui widgets with supporting data and show.
+  ## \brief Create gui widgets.
   #
   def createGauge(self):
     imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
@@ -404,8 +407,15 @@ class Counter(Frame):
       if self.m_img[key] is None:
         print "Error: Gauge.Counter: Cannot open image %s." % (fname)
         return
-      if chkSize and (self.m_img[key].size != tgtSize):
-        self.m_img[key] = self.m_img[key].resize(tgtSize, Image.BICUBIC)
+      if chkSize:
+        imgSize = self.m_img[key].size
+        if key == '.':
+          scale = float(tgtSize[1]) / float(imgSize[1])
+          tgtDotSize = (int(imgSize[0] * scale), int(imgSize[1] * scale))
+          if imgSize != tgtDotSize:
+            self.m_img[key] = self.m_img[key].resize(tgtDotSize, Image.BICUBIC)
+        elif imgSize != tgtSize:
+          self.m_img[key] = self.m_img[key].resize(tgtSize, Image.BICUBIC)
       self.m_photo[key] = ImageTk.PhotoImage(self.m_img[key])
 
     #print self.m_img.keys()
@@ -429,7 +439,9 @@ class Counter(Frame):
     if self.m_numIDigits < 1:
       self.m_numIDigits = 1
 
-    # number of fraction digits to display
+    #
+    # Number of fraction digits to display.
+    #
     self.m_numFDigits = int(math.ceil(abs(math.log10(abs(self.m_gaugeRes)))))
     
     #
@@ -443,21 +455,21 @@ class Counter(Frame):
     #
     # Dimensions
     #
-    size    = self.m_img[' '].size
-    width   = size[0] * self.m_numIDigits
-    height  = size[1]
-    x       = size[0] / 2
-    y       = size[1] / 2
+    tumblerSize   = self.m_img[' '].size
+    canvasWidth   = tumblerSize[0] * self.m_numIDigits
+    canvasHeight  = tumblerSize[1]
+
     if self.m_hasSign:
-      width += size[0]
+      canvasWidth += tumblerSize[0]
+
     if self.m_numFDigits > 0:
-      dpWidth = int(size[0] * 0.25)   # decimal point width
-      dpMargin = 2                    # decimal point margin
-      width += dpWidth + 2 * dpMargin + size[0] * self.m_numFDigits
+      dotSize = self.m_img['.'].size
+      canvasWidth += dotSize[0]
+      canvasWidth += tumblerSize[0] * self.m_numFDigits
 
     if len(self.m_gaugeLabel) > 0:
       label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
-      scale = width / label_width * 0.90
+      scale = canvasWidth / label_width * 0.90
       fontSize = int(13.0 * scale) 
       if fontSize <= 10:
         fontWeight = "normal"
@@ -465,7 +477,7 @@ class Counter(Frame):
         fontWeight = "bold"
       fontMargin  = 1
       helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
-      height += fontSize + 2 * fontMargin
+      canvasHeight += fontSize + 2 * fontMargin
     else:
       fontSize    = 0
       fontMargin  = 0
@@ -473,46 +485,57 @@ class Counter(Frame):
     #
     # Canvas
     #
-    self.m_canvas = Canvas(self, width=width, height=height)
+    self.m_canvas = Canvas(self, width=canvasWidth, height=canvasHeight)
     self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
 
+    # starting image origin
+    x = tumblerSize[0] / 2
+    y = tumblerSize[1] / 2
+
     #
-    # Create counter tumblers, left to right
+    # Create canvas counter tumblers, left to right
     #
+
+    # sign
     if self.m_hasSign:
-      origin  = (x, y)
-      self.m_idImg['sign'] = self.m_canvas.create_image(origin,
+      self.m_idImg['sign'] = self.m_canvas.create_image((x, y),
                                                 image=self.m_photo['+'])
       self.m_tumbler['sign'] = '+'
-      x += size[0]
+      x += tumblerSize[0]
 
+    # integer digits
     place = self.m_numIDigits - 1
     for i in range(0, self.m_numIDigits):
-      origin  = (x, y)
-      self.m_idImg[place] = self.m_canvas.create_image(origin,
+      self.m_idImg[place] = self.m_canvas.create_image((x, y),
                                                 image=self.m_photo[0])
       self.m_tumbler[place] = 0
       #print 'i', place
-      x  += size[0]
+      x  += tumblerSize[0]
       place -= 1
 
+    # decimal point
     if self.m_numFDigits > 0:
-      h  = size[1]
-      x1 = x - size[0]/2 + dpMargin
-      y1 = h - dpWidth - dpMargin
-      x2 = x1 + dpWidth
-      y2 = h - dpMargin
-      self.m_canvas.create_oval(x1, y1, x2, y2, fill="#333333")
-      x = x2 + dpMargin + size[0]/2
+      x -= tumblerSize[0] / 2
+      x += dotSize[0] / 2
+      self.m_idImg['.'] = self.m_canvas.create_image((x, y),
+                                                image=self.m_photo['.'])
+      x += dotSize[0] / 2 + tumblerSize[0] / 2
+      #h  = size[1]
+      #x1 = x - size[0]/2 + dpMargin
+      #y1 = h - dpWidth - dpMargin
+      #x2 = x1 + dpWidth
+      #y2 = h - dpMargin
+      #self.m_canvas.create_oval(x1, y1, x2, y2, fill="#333333")
+      #x = x2 + dpMargin + size[0]/2
 
+    # faction digits
     place = -1
     for i in range(0, self.m_numFDigits):
-      origin  = (x, y)
       #print 'f', place
-      self.m_idImg[place] = self.m_canvas.create_image(origin,
+      self.m_idImg[place] = self.m_canvas.create_image((x, y),
                                                 image=self.m_photo[0])
       self.m_tumbler[place] = 0
-      x  += size[0]
+      x  += tumblerSize[0]
       place -= 1
 
     #print self.m_idImg.keys()
@@ -520,7 +543,7 @@ class Counter(Frame):
 
     # counter label
     if len(self.m_gaugeLabel) > 0:
-      origin = (width/2, height-(fontSize+fontMargin)/2)
+      origin = (canvasWidth/2, canvasHeight-(fontSize+fontMargin)/2)
       self.m_idLabel = self.m_canvas.create_text(origin, text=self.m_gaugeLabel,
                 font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
@@ -530,10 +553,6 @@ class Counter(Frame):
   def update(self, val):
     if self.m_isCreated:
       self.turn(val)
-
-  #
-  def toGauge(self, val):
-    pass
 
   #
   def turn(self, val):
@@ -596,6 +615,209 @@ class Counter(Frame):
 
 
 # ------------------------------------------------------------------------------
+# Class Battery
+# ------------------------------------------------------------------------------
+
+#
+## \brief Laelaps battery charge gauge class.
+##
+class Battery(Frame):
+  GaugeMinCharge =   0.0
+  GaugeMaxCharge = 100.0
+  GaugeResCharge =  20.0
+
+  #
+  ## \brief Constructor.
+  ##
+  ## \param cnf     Configuration dictionary.
+  ## \param kw      Keyword options.
+  #
+  def __init__(self, master=None, cnf={}, **kw):
+    self.m_imgFileName = {
+      'batt_0':       'Battery0.png',
+      'batt_20':      'Battery20.png',
+      'batt_40':      'Battery40.png',
+      'batt_60':      'Battery60.png',
+      'batt_80':      'Battery80.png',
+      'batt_100':     'Battery100.png',
+      'batt_chg_0':   'BatteryCharge0.png',
+      'batt_chg_20':  'BatteryCharge20.png',
+      'batt_chg_40':  'BatteryCharge40.png',
+      'batt_chg_60':  'BatteryCharge60.png',
+      'batt_chg_80':  'BatteryCharge80.png',
+      'batt_chg_100': 'BatteryCharge100.png',
+    }
+
+    self.m_img          = {}      ## loaded images
+    self.m_photo        = {}      ## converted to tkinter photo images
+    self.m_idBattImg    = None    ## canvas image ids
+    self.m_keyBatt      = None    ## battery key
+    self.m_value        = 0.0     ## battery charge value
+    self.m_isCharging   = False   ## battery is [not] charging
+    self.m_isCreated    = False   ## counter is [not] created
+
+    self.m_testDir      = 1
+
+    self.setDefaults()
+
+    kw = self.configGauge(kw)
+
+    Frame.__init__(self, master=master, cnf=cnf, **kw)
+
+    self.createGauge()
+
+  #
+  def setDefaults(self):
+    # defaults
+    self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
+    self.m_gaugeTextColor = "#000000" ## gauge label display color
+    self.m_gaugeSize      = None      ## gauge size (width,height)
+
+  #
+  ## \brief Configure gauge from keyword option values.
+  ##
+  ## \param kw      Keyword options.
+  ##
+  ## \return Modified keywords sans this specific class keywords.
+  ##
+  def configGauge(self, kw):
+    passthru = {}
+
+    for k,v in kw.iteritems():
+      if k == "gauge_label":
+        self.m_gaugeLabel = v
+      elif k == "gauge_text_color":
+        self.m_gaugeTextColor = str(v)
+      elif k == "gauge_size":
+        self.m_gaugeSize = v
+      else:
+        passthru[k] = v
+
+    return passthru
+
+  #
+  ## \brief Create gui widgets.
+  #
+  def createGauge(self):
+    imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
+    chkSize             = False
+
+    #
+    # Counter blank
+    #
+    if self.m_gaugeSize is not None and len(self.m_gaugeSize) == 2:
+      tgtSize = (self.m_gaugeSize[0], self.m_gaugeSize[1])
+      chkSize = True
+
+    #
+    # Load and transform battery images
+    #
+    for key,fname in self.m_imgFileName.iteritems():
+      self.m_img[key] = imageLoader.openImage(fname)
+      if self.m_img[key] is None:
+        print "Error: Gauge.Counter: Cannot open image %s." % (fname)
+        return
+      if chkSize:
+        imgSize = self.m_img[key].size
+        if imgSize != tgtSize:
+          self.m_img[key] = self.m_img[key].resize(tgtSize, Image.BICUBIC)
+      self.m_photo[key] = ImageTk.PhotoImage(self.m_img[key])
+
+    self.m_keyBatt = 'batt_0'
+
+    #
+    # Dimensions
+    #
+    battImgSize   = self.m_img[self.m_keyBatt].size
+    canvasWidth   = battImgSize[0]
+    canvasHeight  = battImgSize[1]
+
+    if len(self.m_gaugeLabel) > 0:
+      label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
+      scale = canvasWidth / label_width * 0.90
+      fontSize = int(13.0 * scale) 
+      if fontSize <= 10:
+        fontWeight = "normal"
+      else:
+        fontWeight = "bold"
+      fontMargin  = 1
+      helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
+      canvasHeight += fontSize + 2 * fontMargin
+    else:
+      fontSize    = 0
+      fontMargin  = 0
+
+    #
+    # Canvas
+    #
+    self.m_canvas = Canvas(self, width=canvasWidth, height=canvasHeight)
+    self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
+
+    # battery
+    x = canvasWidth / 2
+    y = canvasHeight / 2
+    self.m_idImgBatt = self.m_canvas.create_image((x, y),
+                                            image=self.m_photo[self.m_keyBatt])
+
+    self.m_isCreated  = True
+
+  #
+  def update(self, val, isCharging=False):
+    if self.m_isCreated:
+      val = self.toGauge(val)
+      key = self.toKey(val, isCharging)
+      if key != self.m_keyBatt:
+        self.m_canvas.itemconfig(self.m_idImgBatt, image=self.m_photo[key])
+        self.m_keyBatt = key
+      self.m_value      = val
+      self.m_isCharging = isCharging
+
+  #
+  def toGauge(self, val):
+    if val < Battery.GaugeMinCharge:
+      val = Battery.GaugeMinCharge
+    elif val > Battery.GaugeMaxCharge:
+      val = Battery.GaugeMaxCharge
+    return val
+
+  #
+  def toKey(self, val, isCharging):
+    key = self.m_keyBatt
+    rngmin = int(Battery.GaugeMinCharge)
+    rngmax = int(Battery.GaugeMaxCharge+Battery.GaugeResCharge)
+    for res in range(rngmin, rngmax, int(Battery.GaugeResCharge)):
+      if val <= res:
+        if isCharging:
+          key = "batt_chg_%d" % (int(res))
+        else:
+          key = "batt_%d" % (int(res))
+        return key
+    return key
+
+  #
+  def testGauge(self):
+    ndir = 0
+    if self.m_value >= Battery.GaugeMaxCharge:
+      ndir = -1
+      isCharging = False
+    elif self.m_value <= Battery.GaugeMinCharge:
+      ndir = 1
+      isCharging = True
+    delta = random.uniform(0, Battery.GaugeResCharge/2)
+    if ndir == 1:
+      self.m_testDir = ndir
+      isCharging = True
+    elif ndir == -1:
+      self.m_testDir = ndir
+      isCharging = False
+    else:
+      isCharging = self.m_isCharging
+    val = self.m_value + self.m_testDir * delta
+    self.update(val, isCharging)
+    self.master.after(1000, self.testGauge)
+
+
+# ------------------------------------------------------------------------------
 # Guage Unit Test
 # ------------------------------------------------------------------------------
 
@@ -635,6 +857,9 @@ if __name__ == '__main__':
       borderwidth=3)
   wframe.grid(row=0, column=1)
 
+  batt = Battery(wframe, gauge_size=(50, 75))
+  batt.grid(row=0, column=0, rowspan=2)
+
   dialPower = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
       gauge_size=150, gauge_res=0.5, gauge_label="watts",
@@ -642,7 +867,7 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialPower.grid(row=0, column=0);
+  dialPower.grid(row=0, column=1);
 
   dialSpeed = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
@@ -651,7 +876,7 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialSpeed.grid(row=0, column=1);
+  dialSpeed.grid(row=0, column=2);
 
   dialTemp = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
@@ -660,12 +885,12 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialBlueRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialTemp.grid(row=1, column=0);
+  dialTemp.grid(row=1, column=1);
 
   counterMeters = Counter(wframe, gauge_size=(20, 30),
       gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
       gauge_label="meters")
-  counterMeters.grid(row=1, column=1);
+  counterMeters.grid(row=1, column=2);
 
   #
   # Powertrain
@@ -694,7 +919,8 @@ if __name__ == '__main__':
 
   counterPulses = Counter(wframe, gauge_size=(10, 15),
       gauge_val_min=-4000000000, gauge_val_max=4000000000,
-      relief='ridge', borderwidth=1, bg="#000000")
+      gauge_label="pulses")
+      #relief='ridge', borderwidth=1, bg="#000000")
   counterPulses.grid(row=1, column=0, columnspan=2);
 
   #
@@ -708,6 +934,7 @@ if __name__ == '__main__':
   win.after(1200, counterDft.testGauge)
   win.after(894, counterPulses.testGauge)
   win.after(193, counterMeters.testGaugeCountingUp)
+  win.after(2193, batt.testGauge)
 
   DialExtern = dialDft
   win.after(10000, testRepurp)
