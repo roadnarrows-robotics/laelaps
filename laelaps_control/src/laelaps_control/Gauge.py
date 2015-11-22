@@ -667,6 +667,7 @@ class Battery(Frame):
     self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
     self.m_gaugeTextColor = "#000000" ## gauge label display color
     self.m_gaugeSize      = None      ## gauge size (width,height)
+    self.m_gaugeRot       = 0.0       ## gauge rotation (degrees)
 
   #
   ## \brief Configure gauge from keyword option values.
@@ -685,6 +686,8 @@ class Battery(Frame):
         self.m_gaugeTextColor = str(v)
       elif k == "gauge_size":
         self.m_gaugeSize = v
+      elif k == "gauge_rot":
+        self.m_gaugeRot = float(v)
       else:
         passthru[k] = v
 
@@ -710,8 +713,11 @@ class Battery(Frame):
     for key,fname in self.m_imgFileName.iteritems():
       self.m_img[key] = imageLoader.openImage(fname)
       if self.m_img[key] is None:
-        print "Error: Gauge.Counter: Cannot open image %s." % (fname)
+        print "Error: Gauge.Battery: Cannot open image %s." % (fname)
         return
+      if self.m_gaugeRot != 1.0:
+        self.m_img[key] = self.m_img[key].rotate(self.m_gaugeRot, expand=1,
+                                                resample=Image.BICUBIC)
       if chkSize:
         imgSize = self.m_img[key].size
         if imgSize != tgtSize:
@@ -899,7 +905,7 @@ class Indicator(Frame):
     for key,fname in self.m_imgFileName.iteritems():
       self.m_img[key] = imageLoader.openImage(fname)
       if self.m_img[key] is None:
-        print "Error: Gauge.Counter: Cannot open image %s." % (fname)
+        print "Error: Gauge.Indicator: Cannot open image %s." % (fname)
         return
       imgSize = self.m_img[key].size
       if imgSize[0] != self.m_gaugeSize:
@@ -999,6 +1005,29 @@ if __name__ == '__main__':
       borderwidth=3)
   wframe.grid(row=0, column=1)
 
+  # indicators
+  subframe = Frame(wframe, relief="flat")
+  subframe.grid(row=0, column=0, columnspan=2)
+
+  indMode = Indicator(subframe, gauge_label='Auto')
+  indMode.grid(row=0, column=0)
+
+  indMotors = Indicator(subframe, gauge_label='Motors')
+  indMotors.grid(row=0, column=1)
+
+  indMoving = Indicator(subframe, gauge_label='Moving')
+  indMoving.grid(row=0, column=2)
+
+  indMotors = Indicator(subframe, gauge_label='Alarms')
+  indMotors.grid(row=0, column=3)
+
+  indEStop = Indicator(subframe, gauge_label='EStop')
+  indEStop.grid(row=0, column=4)
+
+  batt = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
+  batt.grid(row=0, column=5)
+
+  # dials
   dialPower = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
       gauge_size=150, gauge_res=0.5, gauge_label="watts",
@@ -1006,16 +1035,16 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialPower.grid(row=0, column=0);
+  dialPower.grid(row=1, column=0);
 
   dialSpeed = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
-      gauge_size=150, gauge_res=0.5, gauge_label="m/s",
+      gauge_size=175, gauge_res=0.5, gauge_label="m/s",
       gauge_show_val=True, gauge_moving_win=4,
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialSpeed.grid(row=0, column=1);
+  dialSpeed.grid(row=1, column=1);
 
   dialTemp = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
@@ -1024,45 +1053,38 @@ if __name__ == '__main__':
       gauge_dial_image="GaugeDialBlueRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-  dialTemp.grid(row=1, column=0);
+  dialTemp.grid(row=2, column=0)
 
+  # odometers
   subframe = Frame(wframe, relief="flat")
-  subframe.grid(row=1, column=1)
+  subframe.grid(row=2, column=1, padx=0, ipadx=0)
 
   counterMeters = Counter(subframe, gauge_size=(20, 30),
       gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
       gauge_label="m")
-  counterMeters.grid(row=0, column=0);
+  counterMeters.grid(row=0, column=0, padx=0, sticky=W)
 
-  counterTrip = Counter(subframe, gauge_size=(20, 30),
-      gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01,
-      gauge_label="trip")
-  counterTrip.grid(row=1, column=0);
+  subsubframe = Frame(subframe, relief="flat")
+  subsubframe.grid(row=1, column=0, padx=0, ipadx=0, sticky=W)
 
-  batt = Battery(wframe, gauge_size=(75, 100))
-  batt.grid(row=0, column=3)
+  w = Canvas(subsubframe, width=20*3-2, height=30, borderwidth=0)
+  w.grid(row=0, column=0, padx=0, ipadx=0, sticky=W)
 
-  indMode = Indicator(wframe, gauge_label='Manual')
-  indMode.grid(row=0, column=4)
+  w = Button(subsubframe, text='reset', bg="#333333", fg="#ffffff")
+  w.grid(row=0, column=0, padx=0, ipadx=0, sticky=W)
 
-  indMotors = Indicator(wframe, gauge_label='Motors')
-  indMotors.grid(row=1, column=4)
-
-  indMoving = Indicator(wframe, gauge_label='Moving')
-  indMoving.grid(row=0, column=5)
-
-  indMotors = Indicator(wframe, gauge_label='Alarms')
-  indMotors.grid(row=1, column=5)
-
-  indEStop = Indicator(wframe, gauge_label='EStop')
-  indEStop.grid(row=0, column=6)
+  counterTrip = Counter(subsubframe, gauge_size=(20, 30),
+      gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01, padx=0,
+      borderwidth=0)
+      #gauge_label="trip")
+  counterTrip.grid(row=0, column=1, padx=0, ipadx=0, sticky=W);
 
   #
   # Powertrain
   #
   wframe = LabelFrame(win, text="Powertrain", fg="#0000aa", relief="ridge",
       borderwidth=3)
-  wframe.grid(row=0, column=2)
+  wframe.grid(row=0, column=3)
 
   dialPtPower = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
