@@ -22,5 +22,7 @@ industrial_msgs/TriState  is_charging       # battery is charging: TRUE FALSE
 float64                   voltage           # battery voltage [V]
 float64                   current           # estimated total current draw [A]
 float64                   temp              # interior temperature [C]
+industrial_msgs/TriState  aux_batt_en       # deck aux. batt. out enable: ON OFF
+industrial_msgs/TriState  aux_5v_en         # deck aux. 5V out enable: ON OFF
 MotorCtlrHealth[]         motor_ctlr_health # motor controllers health
 MotorHealth[]             motor_health      # motors health

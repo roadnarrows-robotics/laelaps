@@ -140,6 +140,7 @@ class window(Frame):
   ## \return Modified keywords sans this specific class.
   #
   def initData(self, kw):
+    self.m_debug          = False # default debug level
     self.m_bHasJointPanel = False # joint state panel [not] created 
                                   # application configuration
     self.m_config         = ConfigDlg.ConfigDft
@@ -147,6 +148,9 @@ class window(Frame):
     self.m_wBttn          = {}    # button widgets
     self.m_keysFewMoves   = []    # gui button keys depending on calibration
     self.m_keysNoMoves    = []    # gui button keys depending on robot mode
+    self.m_robotState     = {}    # robot state widgets, variables, and values
+    self.m_subsysState    = {}    # subsystems state widgets, variables, values
+
     self.m_robotStatus    = {}    # robot status widgets, variables, and values
     self.m_powertrain     = {}    # powertrain state widgets, variables, etc.
 
@@ -156,6 +160,9 @@ class window(Frame):
     if kw.has_key('pub_joint_move_cb'):
       self.cbMoveRobot = kw['pub_joint_move_cb']
       del kw['pub_joint_move_cb']
+    if kw.has_key('debug'):
+      self.m_debug = kw['debug']
+      del kw['debug']
 
     return kw
 
@@ -220,21 +227,21 @@ class window(Frame):
 
     # move foward
     w = self.createButton(wframe, "Forward", "icons/icon_bot_forward.png",
-                            self.moveForward)
+                            self.cbMoveForward)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('forward')
 
     # move backward
     row += 1
     w = self.createButton(wframe, "Back", "icons/icon_bot_back.png",
-                            self.moveBackward)
+                            self.cbMoveBackward)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('back')
 
     # spin left
     row += 1
     w = self.createButton(wframe, "Spin\nLeft", "icons/icon_bot_spin_left.png",
-                            self.spinLeft)
+                            self.cbSpinLeft)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('spin_left')
 
@@ -242,7 +249,7 @@ class window(Frame):
     row += 1
     w = self.createButton(wframe, "Spin\nRight",
                             "icons/icon_bot_spin_right.png",
-                            self.spinRight)
+                            self.cbSpinRight)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('spin_right')
 
@@ -250,7 +257,7 @@ class window(Frame):
     row += 1
     w = self.createButton(wframe, "Stop",
                                   "icons/icon_bot_brake.png",
-                                  self.stop)
+                                  self.cbStop)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('stop')
 
@@ -260,6 +267,12 @@ class window(Frame):
     #                              self.specifyMove)
     #w.grid(row=row, column=0, sticky=N+E+W)
     #self.m_keysNoMoves.append('specify_move')
+
+    # debug 
+    if self.m_debug:
+      row += 1
+      w = self.createButton(wframe, "Test", "", self.cbDebug)
+      w.grid(row=row, column=0, sticky=N+E+W)
 
   #
   ## \brief Create robot status and joint state center panel.
@@ -272,7 +285,7 @@ class window(Frame):
 
     #self.createRobotStatusPanel(self.m_wPanelFrame, 0)
     self.createDashboard(self.m_wPanelFrame, 0)
-    self.createPowertrainStatePanel(self.m_wPanelFrame, 1)
+    self.createSubsystems(self.m_wPanelFrame, 1)
 
   def createDashboard(self, parent, row):
     wframe = LabelFrame(parent, text='Dashboard')
@@ -282,81 +295,149 @@ class window(Frame):
     wframe['relief'] = 'ridge'
     wframe.grid(row=row, column=0, padx=1, pady=3, sticky=N+W+E)
 
-    # indicators
+    #
+    # Left gauge cluster
+    #
     subframe = Frame(wframe, relief="flat")
-    subframe.grid(row=0, column=0, columnspan=2)
+    subframe.grid(row=0, column=0, sticky=N)
   
-    indMode = Indicator(subframe, gauge_label='Auto')
-    indMode.grid(row=0, column=0)
+    w = Indicator(subframe, gauge_label='Auto')
+    w.grid(row=0, column=0)
+    self.m_robotState['mode'] = {
+        'raw_val':  RobotMode.UNKNOWN,
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
   
-    indMotors = Indicator(subframe, gauge_label='Motors')
-    indMotors.grid(row=0, column=1)
+    w = Indicator(subframe, gauge_label='Motors')
+    w.grid(row=0, column=1)
+    self.m_robotState['motors'] = {
+        'raw_val':  TriState.UNKNOWN,
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
   
-    indMoving = Indicator(subframe, gauge_label='Moving')
-    indMoving.grid(row=0, column=2)
+    w = Indicator(subframe, gauge_label='Moving')
+    w.grid(row=0, column=2)
+    self.m_robotState['moving'] = {
+        'raw_val':  TriState.UNKNOWN,
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
   
-    indMotors = Indicator(subframe, gauge_label='Alarms')
-    indMotors.grid(row=0, column=3)
+    w = Canvas(subframe, width=20, height=50, borderwidth=0)
+    w.grid(row=1, column=0, padx=0, ipadx=0)
+
+    subsubframe = Frame(subframe, relief="flat")
+    subsubframe.grid(row=2, column=0, columnspan=3, padx=0, ipadx=0, sticky=W)
   
-    indEStop = Indicator(subframe, gauge_label='EStop')
-    indEStop.grid(row=0, column=4)
+    w = Button(subsubframe, text='reset', bg="#333333", fg="#ffffff",
+        padx=1, pady=1, command=self.cbResetTripMeter)
+    w.grid(row=0, column=0, padx=0, ipadx=0, sticky=W)
+    self.m_robotState['reset_trip_meter'] = {
+        'raw_val':  0,
+        'var':      None,
+        'widget':   w,
+        'type':     'button'}
   
-    batt = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
-    batt.grid(row=1, column=0, columnspan=5)
-  
-    # dials
-    dialPower = Dial(wframe,
-        gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
+    w = Counter(subsubframe, gauge_size=(17, 25),
+        gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01, padx=0,
+        gauge_label="trip", relief="sunken", borderwidth=3)
+    w.grid(row=0, column=1, columnspan=3, padx=0, sticky=S+E)
+    self.m_robotState['trip_meter'] = {
+        'raw_val':  0,
+        'var':      None,
+        'widget':   w,
+        'type':     'counter'}
+
+    #
+    # Center gauge cluster
+    #
+    w = Dial(wframe,
+        gauge_val_min=0.0, gauge_val_max=250.0, gauge_val_home=0.0,
         gauge_size=150, gauge_res=0.5, gauge_label="watts",
         gauge_show_val=True, gauge_moving_win=4,
         gauge_dial_image="GaugeDialGreenRed.png",
         gauge_needle_image="GaugeNeedleWhite.png",
         gauge_text_color="#ffffff")
-    dialPower.grid(row=0, column=6);
+    w.grid(row=0, column=1);
+    self.m_robotState['watts'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'dial'}
   
-    dialSpeed = Dial(wframe,
+    w = Dial(wframe,
         gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
-        gauge_size=175, gauge_res=0.5, gauge_label="m/s",
+        gauge_size=150, gauge_res=0.5, gauge_label="m/s",
         gauge_show_val=True, gauge_moving_win=4,
         gauge_dial_image="GaugeDialGreenRed.png",
         gauge_needle_image="GaugeNeedleWhite.png",
         gauge_text_color="#ffffff")
-    dialSpeed.grid(row=0, column=7);
+    w.grid(row=0, column=2);
+    self.m_robotState['velocity'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'dial'}
   
-    dialTemp = Dial(wframe,
+    w = Dial(wframe,
         gauge_val_min=0.0, gauge_val_max=100.0, gauge_val_home=0,
         gauge_size=100, gauge_res=0.5, gauge_label=u"C\u00b0",
-        gauge_show_val=True, gauge_moving_win=4,
+        gauge_show_val=True,
         gauge_dial_image="GaugeDialBlueRed.png",
         gauge_needle_image="GaugeNeedleWhite.png",
         gauge_text_color="#ffffff")
-    dialTemp.grid(row=0, column=8)
+    w.grid(row=0, column=3, sticky=N)
+    self.m_robotState['temp'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'dial'}
   
-    # odometers
+    #
+    # Right gauge cluster
+    #
     subframe = Frame(wframe, relief="flat")
-    subframe.grid(row=1, column=5, columnspan=3, padx=0, ipadx=0)
+    subframe.grid(row=0, column=4, sticky=N)
   
-    counterMeters = Counter(subframe, gauge_size=(20, 30),
+    w = Indicator(subframe, gauge_label='Alarms')
+    w.grid(row=0, column=0)
+    self.m_robotState['alarms'] = {
+        'raw_val':  TriState.UNKNOWN,
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+  
+    w = Indicator(subframe, gauge_label='EStop')
+    w.grid(row=0, column=1)
+    self.m_robotState['estop'] = {
+        'raw_val':  TriState.UNKNOWN,
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+  
+    w = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
+    w.grid(row=0, column=2)
+    self.m_robotState['battery'] = {
+        'raw_val':  (0.0, False),
+        'var':      None,
+        'widget':   w,
+        'type':     'battery'}
+
+    w = Canvas(subframe, width=20, height=50, borderwidth=0)
+    w.grid(row=1, column=0, padx=0, ipadx=0)
+
+    w = Counter(subframe, gauge_size=(20, 30),
         gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
-        gauge_label="m")
-    counterMeters.grid(row=0, column=0, padx=0, sticky=W)
+        gauge_label="m", relief="sunken", borderwidth=3)
+    w.grid(row=2, column=0, columnspan=3, padx=0, sticky=S+W)
+    self.m_robotState['odometer'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'counter'}
   
-    subsubframe = Frame(subframe, relief="flat")
-    subsubframe.grid(row=1, column=0, padx=0, ipadx=0, sticky=W)
-  
-    w = Canvas(subsubframe, width=20*3-2, height=30, borderwidth=0)
-    w.grid(row=0, column=0, padx=0, ipadx=0, sticky=W)
-  
-    w = Button(subsubframe, text='reset', bg="#333333", fg="#ffffff")
-    w.grid(row=0, column=0, padx=0, ipadx=0, sticky=W)
-  
-    counterTrip = Counter(subsubframe, gauge_size=(20, 30),
-        gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01, padx=0,
-        borderwidth=0)
-        #gauge_label="trip")
-    counterTrip.grid(row=0, column=1, padx=0, ipadx=0, sticky=W);
-
-
   #
   ## \brief Create robot status upper center panel.
   ##
@@ -568,13 +649,13 @@ class window(Frame):
     self.m_robotStatus['estop_led'] = d
 
   #
-  ## \brief Create powertrain state lower center panel headers.
+  ## \brief Create subsystem state lower center panel headers.
   ##
   ## \param parent  Parent widget
   ## \param row     Row in parent widget.
   #
-  def createPowertrainStatePanel(self, parent, row):
-    wframe = LabelFrame(parent, text='Powertrain State')
+  def createSubsystems(self, parent, row):
+    wframe = LabelFrame(parent, text='Robot Subsystems')
     wframe['font'] =('Helvetica', 12)
     wframe['fg'] = fgColors['focus']
     wframe['borderwidth'] = 2
@@ -599,6 +680,8 @@ class window(Frame):
       w.create_image(150, 150, image=self.m_icons['laelaps_top_down'])
 
     padx = 15
+
+    self.m_subsysState['powertrain'] = { }
 
     # Left-Front motor/wheel/tire
     wsubframe = Frame(wframe);
@@ -642,30 +725,48 @@ class window(Frame):
   ## \param onLeft    Labeling is [not] on the left.
   #
   def createPowertrainSubpanel(self, wframe, jointName, onLeft):
-    dialPtPower = Dial(wframe,
-      gauge_val_min=0.0, gauge_val_max=255.0, gauge_val_home=0,
+    d = {}
+
+    w = Dial(wframe,
+      gauge_val_min=0.0, gauge_val_max=60.0, gauge_val_home=0.0,
       gauge_size=100, gauge_res=0.5, gauge_label="watts",
       gauge_show_val=True, gauge_moving_win=4,
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-    dialPtPower.grid(row=0, column=0);
+    w.grid(row=0, column=0);
+    d['watts'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'dial'}
 
-    dialPtSpeed = Dial(wframe,
+    w = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
       gauge_size=100, gauge_res=0.5, gauge_label="qpps",
       gauge_show_val=True, gauge_moving_win=4,
       gauge_dial_image="GaugeDialRedGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
-    dialPtSpeed.grid(row=0, column=1);
+    w.grid(row=0, column=1);
+    d['qpps'] = {
+        'raw_val':  0.0,
+        'var':      None,
+        'widget':   w,
+        'type':     'dial'}
 
-    counterPulses = Counter(wframe, gauge_size=(10, 15),
+    w = Counter(wframe, gauge_size=(15, 22),
       gauge_val_min=-4000000000, gauge_val_max=4000000000,
-      gauge_label="p")
+      gauge_label="p", relief="sunken", borderwidth=3)
       #relief='ridge', borderwidth=1, bg="#000000")
-    counterPulses.grid(row=1, column=0, columnspan=2);
+    w.grid(row=1, column=0, columnspan=2);
+    d['pulses'] = {
+        'raw_val':  0,
+        'var':      None,
+        'widget':   w,
+        'type':     'counter'}
 
+    self.m_subsysState['powertrain'][jointName] = d
 
   #
   ## \brief Create joint state lower center panel state.
@@ -795,8 +896,8 @@ class window(Frame):
     row = 0;
 
     # estop
-    w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png", self.estop,
-                                  fg='red')
+    w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png",
+        self.cbEStop, fg='red')
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_icons['estop_reset'] = \
         self.m_imageLoader.loadImage("icons/icon_estop_reset.png")
@@ -804,14 +905,14 @@ class window(Frame):
     # freeze
     row += 1
     w = self.createButton(wframe, "Park",
-                                  "icons/icon_stop.png", self.freeze)
+                                  "icons/icon_stop.png", self.cbFreeze)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('park')
 
     # release
     row += 1
     w = self.createButton(wframe, "Neutral",
-                                  "icons/icon_pause.png", self.release)
+                                  "icons/icon_pause.png", self.cbRelease)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('neutral')
 
@@ -825,13 +926,13 @@ class window(Frame):
     # settings
     row += 1
     w = self.createButton(wframe, "Settings",
-                                 "icons/icon_settings.png", self.settings)
+                                 "icons/icon_settings.png", self.cbSettings)
     w.grid(row=row, column=0, sticky=N+E+W)
 
     # info
     row += 1
     w = self.createButton(wframe, "About",
-                                  "icons/icon_info.png", self.about)
+                                  "icons/icon_info.png", self.cbAbout)
     w.grid(row=row, column=0, sticky=N+E+W)
 
     # quit
@@ -904,9 +1005,15 @@ class window(Frame):
     self.quit()
 
   #
-  ## \brief Move forward
+  ## \brief Reset trip meter callback.
   #
-  def moveForward(self):
+  def cbResetTripMeter(self):
+    self.showInfo("reset trip meter.")
+
+  #
+  ## \brief Move forward callback.
+  #
+  def cbMoveForward(self):
     self.showInfo("Moving forward.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
@@ -914,9 +1021,9 @@ class window(Frame):
     self.m_pub_velocities.publish(cmd)
   
   #
-  ## \brief Move backward.
+  ## \brief Move backward callback.
   #
-  def moveBackward(self):
+  def cbMoveBackward(self):
     self.showInfo("Moving back.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
@@ -924,9 +1031,9 @@ class window(Frame):
     self.m_pub_velocities.publish(cmd)
   
   #
-  ## \brief Spin left.
+  ## \brief Spin left callback.
   #
-  def spinLeft(self):
+  def cbSpinLeft(self):
     self.showInfo("Spinning left.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
@@ -939,9 +1046,9 @@ class window(Frame):
     self.m_pub_velocities.publish(cmd)
   
   #
-  ## \brief Spin right.
+  ## \brief Spin right callback.
   #
-  def spinRight(self):
+  def cbSpinRight(self):
     self.showInfo("Spinning right.")
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
@@ -954,9 +1061,9 @@ class window(Frame):
     self.m_pub_velocities.publish(cmd)
   
   #
-  ## \brief Brake to stop.
+  ## \brief Brake to stop callback.
   #
-  def stop(self):
+  def cbStop(self):
     self.resetBrake()
     cmd = Stop()
     self.m_pub_velocities.publish(cmd)
@@ -971,7 +1078,7 @@ class window(Frame):
   #
   ## \brief (Reset) emergency stop button callback.
   #
-  def estop(self):
+  def cbEStop(self):
     if not self.m_robotStatus['estop_led']['raw']:
       self.showResetEStop()
       try:
@@ -1009,7 +1116,7 @@ class window(Frame):
   #
   ## \brief Park laelaps button callback.
   #
-  def freeze(self):
+  def cbFreeze(self):
     try:
       rospy.wait_for_service("laelaps_control/freeze", timeout=1)
     except rospy.ROSException, e:
@@ -1026,7 +1133,7 @@ class window(Frame):
   #
   ## \brief Release laelaps button callback.
   #
-  def release(self):
+  def cbRelease(self):
     try:
       rospy.wait_for_service("laelaps_control/release", timeout=1)
     except rospy.ROSException, e:
@@ -1079,7 +1186,7 @@ class window(Frame):
   #
   ## \brief Open settings dialog button callback.
   #
-  def settings(self):
+  def cbSettings(self):
     dlg = ConfigDlg(master=self, config=self.m_config)
     self.m_config = dlg.m_config
     if dlg.m_saved:
@@ -1088,7 +1195,7 @@ class window(Frame):
   #
   ## \brief Show about dialog button callback.
   #
-  def about(self):
+  def cbAbout(self):
     prodInfo = None
     try:
       rospy.wait_for_service("laelaps_control/get_product_info", timeout=1)
@@ -1105,6 +1212,31 @@ class window(Frame):
         self.showError("Get product info request failed: %s." % (e.message))
     dlg = AboutDlg(master=self, info=prodInfo, app_ver=appVersion)
   
+  def cbDebug(self):
+    msg = RobotStatusExtended()
+    msg.mode.val = RobotMode.MANUAL 
+    msg.e_stopped.val = TriState.TRUE
+    msg.drives_powered.val = TriState.ON
+    msg.motion_possible.val = TriState.ON
+    msg.in_motion.val = TriState.ON
+    msg.in_error.val = TriState.TRUE
+    msg.battery = 72.2
+    msg.is_charging.val = TriState.TRUE
+    msg.voltage = 11.2
+    msg.current = 12.1
+    msg.temp = 35.2
+    msg.aux_batt_en.val = TriState.TRUE
+    msg.aux_5v_en.val = TriState.TRUE
+    self.updateRobotStatus(msg) 
+
+    msg = Dynamics()
+    msg.name = ['left_front', 'right_rear', 'right_front', 'left_rear']
+    msg.motor_encoder = [1925050, -457812, 1, 99992]
+    msg.motor_speed = [-5050, 345, 0, -500]
+    msg.motor_power_elec = [32.9, 0.009, 13.667, 19]
+
+    #self.updateDynamics(msg) 
+
   #
   ## \brief Update robot status.
   ##
@@ -1134,67 +1266,87 @@ class window(Frame):
       bNoMoves = False
 
     key = 'mode'
-    if self.m_robotStatus[key]['raw'] != status.mode.val:
-      text, fg = self.toRobotMode(status.mode.val)
-      self.m_robotStatus[key]['raw'] = status.mode.val
-      self.showEntry(self.m_robotStatus[key]['w'],
-                     self.m_robotStatus[key]['var'], text, fg)
+    val = status.mode.val
+    if self.m_robotState[key]['raw_val'] != val:
+      if val == RobotMode.MANUAL:
+        self.m_robotState[key]['widget'].update('amber', 'Manual')
+      elif val == RobotMode.AUTO:
+        self.m_robotState[key]['widget'].update('green', 'Auto')
+      else:
+        self.m_robotState[key]['widget'].update('gray', 'Auto')
+      self.m_robotState[key]['raw'] = val
+
       if bNoMoves:
         state = 'disabled'
       else:
         state = 'normal'
-      self.updateButtonState(self.m_keysNoMoves, state)
+      self.updateButtonState(self.m_keysNoMoves, 'disabled')
 
-    key = 'battery'
-    if self.m_robotStatus[key]['raw'] != status.mode.val:
-      text, fg = self.toVoltage(status.voltage)
-      self.m_robotStatus[key]['var'].set(text)
-      self.m_robotStatus[key]['w']['fg'] = fg
-      self.m_robotStatus[key]['raw'] = status.voltage
+    key = 'motors'
+    val = status.drives_powered.val
+    if self.m_robotState[key]['raw_val'] != val:
+      if val == TriState.ON:
+        self.m_robotState[key]['widget'].update('green')
+      elif val == TriState.OFF:
+        self.m_robotState[key]['widget'].update('gray')
+      else:
+        self.m_robotState[key]['widget'].update('gray')
+      self.m_robotState[key]['raw_val'] = val
+
+    key = 'moving'
+    val = status.in_motion.val
+    if self.m_robotState[key]['raw_val'] != val:
+      if val == TriState.ON:
+        self.m_robotState[key]['widget'].update('green')
+      elif val == TriState.OFF:
+        self.m_robotState[key]['widget'].update('gray')
+      else:
+        self.m_robotState[key]['widget'].update('gray')
+      self.m_robotState[key]['raw_val'] = val
+
+    key = 'watts'
+    val = status.voltage * status.current
+    self.m_robotState[key]['widget'].update(val)
+    self.m_robotState[key]['raw_val'] = val
 
     key = 'temp'
-    if self.m_robotStatus[key]['raw'] != status.mode.val:
-      text, fg = self.toTemperature(status.temp)
-      self.m_robotStatus[key]['var'].set(text)
-      self.m_robotStatus[key]['w']['fg'] = fg
-      self.m_robotStatus[key]['raw'] = status.temp
+    val = status.temp
+    self.m_robotState[key]['widget'].update(val)
+    self.m_robotState[key]['raw_val'] = val
 
-    key = 'motors_led'
-    if self.m_robotStatus[key]['raw'] != status.drives_powered.val:
-      self.m_robotStatus[key]['raw'] = status.drives_powered.val
-      if status.drives_powered.val == TriState.ON:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_green'] 
+    key = 'alarms'
+    val = status.in_error.val
+    if self.m_robotState[key]['raw_val'] != val:
+      if val == TriState.ON:
+        self.m_robotState[key]['widget'].update('red')
+      elif val == TriState.OFF:
+        self.m_robotState[key]['widget'].update('gray')
       else:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+        self.m_robotState[key]['widget'].update('gray')
+      self.m_robotState[key]['raw_val'] = val
 
-    key = 'moving_led'
-    if self.m_robotStatus[key]['raw'] != status.in_motion.val:
-      self.m_robotStatus[key]['raw'] = status.in_motion.val
-      if status.in_motion.val == TriState.ON:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_green'] 
+    key = 'estop'
+    val = status.e_stopped.val
+    if self.m_robotState[key]['raw_val'] != val:
+      if val == TriState.ON:
+        self.m_robotState[key]['widget'].update('red')
+      elif val == TriState.OFF:
+        self.m_robotState[key]['widget'].update('gray')
       else:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
+        self.m_robotState[key]['widget'].update('gray')
+      self.m_robotState[key]['raw_val'] = val
 
-    key = 'alarms_led'
-    if self.m_robotStatus[key]['raw'] != status.in_error.val:
-      self.m_robotStatus[key]['raw'] = status.in_error.val
-      if status.in_error.val == TriState.TRUE:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
-      else:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
-
-    key = 'estop_led'
-    if self.m_robotStatus[key]['raw'] != status.e_stopped.val:
-      self.m_robotStatus[key]['raw'] = status.e_stopped.val
-      if status.e_stopped.val == TriState.TRUE:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
-      else:
-        self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
-      if bNoMoves:
-        state = 'disabled'
-      else:
-        state = 'normal'
-      self.updateButtonState(self.m_keysNoMoves, state)
+    key = 'battery'
+    charge = status.battery
+    val = status.is_charging.val
+    if val == TriState.TRUE:
+      isCharging = True
+    else:
+      isCharging = False
+    if  self.m_robotState[key]['raw_val'][0] != charge or \
+        self.m_robotState[key]['raw_val'][1] != isCharging:
+      self.m_robotState[key]['widget'].update(charge, isCharging)
+      self.m_robotState[key]['raw_val'] = (charge, isCharging)
 
   #
   ## \brief Show dynamics state.
@@ -1271,14 +1423,6 @@ class window(Frame):
     w['fg']    = fg
     var.set(val)
     w['state'] = 'readonly'
-
-  def toRobotMode(self, mode):
-    if mode == RobotMode.MANUAL:
-      return ("Manual", fgColors['warning'])
-    elif mode == RobotMode.AUTO:
-      return ("Auto", fgColors['normal'])
-    else:
-      return (repr(mode), fgColors['error'])
 
   def toMotorsPowered(self, drives_powered):
     if drives_powered:
@@ -1433,7 +1577,7 @@ Options and arguments:
     self._Argv0 = kwargs.get('argv0', __file__)
 
     # defaults
-    kwargs['debug'] = False
+    kwargs['debug'] = True # Set to False when finished debugging.
 
     # parse command-line options
     try:
@@ -1474,28 +1618,6 @@ Options and arguments:
 
     self.m_win.showInfo("Laelaps interface initialized.")
 
-    #self.dbgDisplay()
-
-  def dbgDisplay(self):
-    msg = RobotStatusExtended()
-    msg.mode.val = RobotMode.MANUAL 
-    msg.drives_powered.val = TriState.ON
-    msg.motion_possible.val = TriState.ON
-    msg.in_motion.val = TriState.ON
-    msg.in_error.val = TriState.ON
-    msg.e_stopped.val = TriState.ON
-    msg.temp = 35.2
-    msg.voltage = 11.2
-    self.m_win.updateRobotStatus(msg) 
-
-    msg = Dynamics()
-    msg.name = ['left_front', 'right_rear', 'right_front', 'left_rear']
-    msg.motor_encoder = [1925050, -457812, 1, 99992]
-    msg.motor_speed = [-5050, 345, 0, -500]
-    msg.motor_power_elec = [32.9, 0.009, 13.667, 19]
-
-    self.m_win.updateDynamics(msg) 
-
   #
   ## \brief Run application.
   ##    
@@ -1522,7 +1644,7 @@ Options and arguments:
     root = Tk()
 
     # create application window
-    self.m_win = window(master=root, config=config)
+    self.m_win = window(master=root, config=config, **kwargs)
 
     root.protocol('WM_DELETE_WINDOW', root.destroy)
 

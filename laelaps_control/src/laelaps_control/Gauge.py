@@ -476,8 +476,8 @@ class Counter(Frame):
         fontWeight = "normal"
       else:
         fontWeight = "bold"
-      labelWidth = textLen * fontSize + 2 * fontMargin
       helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
+      labelWidth = helv.measure(" "+self.m_gaugeLabel)
       canvasWidth += labelWidth
     else:
       fontSize    = 0
