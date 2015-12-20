@@ -121,13 +121,21 @@ class window(Frame):
     self.m_pub_velocities = rospy.Publisher("laelaps_control/set_velocities",
         Velocity, queue_size=2)
 
+    self.m_imageLoader = ImageLoader(py_pkg='laelaps_control.images',
+                                      image_paths=imagePath)
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
     self.master.title("Laelaps Control Panel")
-    self.grid(row=0, column=0, padx=5, pady=5)
+
+    self.m_icons['app_icon'] = \
+                    self.m_imageLoader.loadImage("icons/LaelapsPanelIcon.png")
+    self.master.tk.call('wm', 'iconphoto', self.master._w,
+        self.m_icons['app_icon'])
 
     # craete and show widgets
     self.createWidgets()
+
+    self.grid(row=0, column=0, padx=5, pady=5)
 
   #
   ## \brief Initialize class state data.
@@ -170,8 +178,6 @@ class window(Frame):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createWidgets(self):
-    self.m_imageLoader = ImageLoader(py_pkg='laelaps_control.images',
-                                      image_paths=imagePath)
     self.createHeading()
     self.createLeftButtons()
     self.createCenterPanel()
