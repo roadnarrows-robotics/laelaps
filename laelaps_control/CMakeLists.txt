@@ -29,6 +29,7 @@ add_message_files(
   DIRECTORY msg
   FILES 
     AmbientLightSensorCaps.msg
+    AuxPwr.msg
     Caps.msg
     Dimensions.msg
     Dynamics.msg
@@ -68,6 +69,7 @@ add_service_files(
     Release.srv
     ReloadConfig.srv
     ResetEStop.srv
+    SetAuxPwr.srv
     SetRobotMode.srv
     SetVelocities.srv
     Stop.srv

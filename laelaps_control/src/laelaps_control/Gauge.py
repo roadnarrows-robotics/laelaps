@@ -46,7 +46,7 @@ from laelaps_control.Utils import *
 # ------------------------------------------------------------------------------
 
 #
-## \brief Laelaps dial gauge class
+## \brief Laelaps Dial gauge class
 ##
 class Dial(Frame):
   GaugeMinAngle = -135
@@ -54,7 +54,7 @@ class Dial(Frame):
   GaugeRange    =  GaugeMaxAngle - GaugeMinAngle
 
   #
-  ## \brief Constructor.
+  ## \brief Dial constructor.
   ##
   ## \param cnf     Configuration dictionary.
   ## \param kw      Keyword options.
@@ -68,6 +68,10 @@ class Dial(Frame):
 
     self.createGauge()
 
+    self.update(self.m_gaugeValHome)
+
+  #
+  ## \brief Dial defaults.
   #
   def setDefaults(self):
     # defaults
@@ -85,7 +89,7 @@ class Dial(Frame):
     self.m_gaugeImgNeedle = 'GaugeNeedleAmber.png'  # needle image file name
 
   #
-  ## \brief Configure gauge from keyword option values.
+  ## \brief Configure dial from keyword option values.
   ##
   ## \param kw      Keyword options.
   ##
@@ -122,11 +126,18 @@ class Dial(Frame):
       else:
         passthru[k] = v
 
+    if self.m_gaugeValHome < self.m_gaugeValMin:
+      self.m_gaugeValHome = self.m_gaugeValMin
+    elif self.m_gaugeValHome > self.m_gaugeValMax:
+      self.m_gaugeValHome = self.m_gaugeValMax
+
     self.m_gaugeValRange = self.m_gaugeValMax - self.m_gaugeValMin
+    self.m_filter = self.m_gaugeMovingWin * \
+                                  [self.m_gaugeValHome/self.m_gaugeMovingWin]
     self.m_value  = self.m_gaugeValHome
-    self.m_filter = self.m_gaugeMovingWin * [self.m_value/self.m_gaugeMovingWin]
-    self.m_angle  = self.toGauge(self.m_value)
-    self.m_dir    = 1
+    self.m_angle  = 360.0   ## force update
+
+    self.m_dir    = 1 ## for testing
 
     return passthru
 
@@ -221,10 +232,6 @@ class Dial(Frame):
     self.m_idValue = self.m_canvas.create_text(origin, text="",
                 font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
-    if self.m_gaugeShowVal:
-      s = self.m_gaugeValFmt % (self.m_value)
-      self.m_canvas.itemconfig(self.m_idValue, text=s)
-
   #
   def update(self, val):
     a = self.toGauge(val)
@@ -307,12 +314,12 @@ class Dial(Frame):
 # ------------------------------------------------------------------------------
 
 #
-## \brief Laelaps counter gauge class.
+## \brief Laelaps Counter gauge class.
 ##
 class Counter(Frame):
 
   #
-  ## \brief Constructor.
+  ## \brief Counter constructor.
   ##
   ## \param cnf     Configuration dictionary.
   ## \param kw      Keyword options.
@@ -341,6 +348,10 @@ class Counter(Frame):
 
     self.createGauge()
 
+    self.update(self.m_gaugeValHome)
+
+  #
+  ## \brief Counter defaults.
   #
   def setDefaults(self):
     # defaults
@@ -381,7 +392,12 @@ class Counter(Frame):
       else:
         passthru[k] = v
 
-    self.m_value  = self.m_gaugeValHome
+    if self.m_gaugeValHome < self.m_gaugeValMin:
+      self.m_gaugeValHome = self.m_gaugeValMin
+    elif self.m_gaugeValHome > self.m_gaugeValMax:
+      self.m_gaugeValHome = self.m_gaugeValMax
+
+    self.m_value  = self.m_gaugeValHome + self.m_gaugeRes * 2 # force update
 
     return passthru
 
@@ -555,11 +571,13 @@ class Counter(Frame):
       val = self.m_gaugeValMin
     elif val > self.m_gaugeValMax:
       val = self.m_gaugeValMax
+
     if (val >= self.m_value - self.m_gaugeRes/2.0) and \
        (val <= self.m_value + self.m_gaugeRes/2.0):
       return
 
     self.m_value = val
+    val = abs(val)
     iPart = int(val)
     fPart = val - iPart
     #print self.m_value, iPart, fPart
@@ -622,7 +640,7 @@ class Battery(Frame):
   GaugeResCharge =  20.0
 
   #
-  ## \brief Constructor.
+  ## \brief Battery constructor.
   ##
   ## \param cnf     Configuration dictionary.
   ## \param kw      Keyword options.
@@ -661,6 +679,8 @@ class Battery(Frame):
 
     self.createGauge()
 
+  #
+  ## \brief Battery defaults.
   #
   def setDefaults(self):
     # defaults
@@ -828,7 +848,7 @@ class Battery(Frame):
 class Indicator(Frame):
 
   #
-  ## \brief Constructor.
+  ## \brief Indicator constructor.
   ##
   ## \param cnf     Configuration dictionary.
   ## \param kw      Keyword options.
@@ -860,6 +880,8 @@ class Indicator(Frame):
     self.createGauge()
 
   #
+  ## \brief Indicator defaults.
+  #
   def setDefaults(self):
     # defaults
     self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
@@ -868,7 +890,7 @@ class Indicator(Frame):
     self.m_gaugeSize      = 48        ## gauge size (pixels)
 
   #
-  ## \brief Configure gauge from keyword option values.
+  ## \brief Configure indicator from keyword option values.
   ##
   ## \param kw      Keyword options.
   ##

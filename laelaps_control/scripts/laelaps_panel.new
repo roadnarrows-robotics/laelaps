@@ -40,6 +40,8 @@ from Tkconstants import *
 from tkFileDialog import *
 import tkFont
 
+import random
+
 import roslib; roslib.load_manifest('laelaps_control')
 import rospy
 
@@ -149,8 +151,6 @@ class window(Frame):
   #
   def initData(self, kw):
     self.m_debug          = False # default debug level
-    self.m_bHasJointPanel = False # joint state panel [not] created 
-                                  # application configuration
     self.m_config         = ConfigDlg.ConfigDft
     self.m_icons          = {}    # must keep loaded icons referenced
     self.m_wBttn          = {}    # button widgets
@@ -171,6 +171,12 @@ class window(Frame):
     if kw.has_key('debug'):
       self.m_debug = kw['debug']
       del kw['debug']
+
+    # variables only used for debugging
+    if self.m_debug:
+      self.m_dbgSeq         = 0                     # debug sequence number
+      self.m_dbgStatusMsg   = RobotStatusExtended() # robot status message
+      self.m_dbgDynamicsMsg = Dynamics()            # robot dynamics message
 
     return kw
 
@@ -289,7 +295,6 @@ class window(Frame):
     self.m_wPanelFrame['relief'] = 'ridge'
     self.m_wPanelFrame.grid(row=1, column=1, padx=1, pady=3, sticky=N+W+E)
 
-    #self.createRobotStatusPanel(self.m_wPanelFrame, 0)
     self.createDashboard(self.m_wPanelFrame, 0)
     self.createSubsystems(self.m_wPanelFrame, 1)
 
@@ -351,7 +356,7 @@ class window(Frame):
         gauge_label="trip", relief="sunken", borderwidth=3)
     w.grid(row=0, column=1, columnspan=3, padx=0, sticky=S+E)
     self.m_robotState['trip_meter'] = {
-        'raw_val':  0,
+        'raw_val':  0.0,        # offset from odometer
         'var':      None,
         'widget':   w,
         'type':     'counter'}
@@ -445,216 +450,6 @@ class window(Frame):
         'type':     'counter'}
   
   #
-  ## \brief Create robot status upper center panel.
-  ##
-  ## \param parent  Parent widget.
-  ## \param row     Row in parent widget.
-  #
-  def createRobotStatusPanel(self, parent, row):
-    wframe = LabelFrame(parent, text='Robot Status')
-    wframe['font'] =('Helvetica', 12)
-    wframe['fg'] = fgColors['focus']
-    wframe['borderwidth'] = 2
-    wframe['relief'] = 'ridge'
-    wframe.grid(row=row, column=0, padx=1, pady=3, sticky=N+W+E)
-
-    width = 8
-    row   = 0
-    col   = 0
-
-    # robot mode field label
-    w = Label(wframe)
-    w['text']     = ' Mode: '
-    w['justify']  = RIGHT
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=W)
-
-    col += 1
-
-    # robot mode field
-    var = StringVar()
-    text, color = self.toRobotMode(RobotMode.AUTO)
-    var.set(text)
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = width
-    w['textvar']  = var
-    w['fg']       = color
-    w['justify']  = LEFT
-    w['state']    = 'readonly'
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
-    d = {'raw': RobotMode.AUTO, 'var': var, 'w': w}
-    self.m_robotStatus['mode'] = d
-
-    col += 1
-
-    # battery field label
-    w = Label(wframe)
-    w['text']     = ' Battery: '
-    w['justify']  = RIGHT
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=W)
-
-    col += 1
-
-    # battery field
-    var = StringVar()
-    text, color = self.toVoltage(0.0)
-    var.set(text)
-    w = Label(wframe)
-    w['textvar']  = var
-    w['relief']   = 'flat'
-    w['width']    = 6
-    w['fg']       = color
-    w['justify']  = LEFT
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0.0, 'var': var, 'w': w}
-    self.m_robotStatus['battery'] = d
-
-    col += 1
-
-    # temperature field label
-    w = Label(wframe)
-    w['text']     = ' Temp: '
-    w['justify']  = RIGHT
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=W)
-
-    col += 1
-
-    # temperature field
-    var = StringVar()
-    text, color = self.toTemperature(0.0)
-    var.set(text)
-    w = Label(wframe)
-    w['textvar']  = var
-    w['relief']   = 'flat'
-    w['width']    = 5
-    w['fg']       = color
-    w['justify']  = LEFT
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0.0, 'var': var, 'w': w}
-    self.m_robotStatus['temp'] = d
-
-    col += 1
-
-    #spacer = Label(wframe, text=' ', width=10)
-    #spacer.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
-
-    #col += 1
-
-    wframe = Frame(wframe)
-    wframe['borderwidth'] = 0
-    wframe['relief'] = 'flat'
-    wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+E)
-
-    self.m_icons['led_dark']  = \
-        self.m_imageLoader.loadImage("icons/icon_led_dark_16.png")
-    self.m_icons['led_green'] = \
-        self.m_imageLoader.loadImage("icons/icon_led_green_16.png")
-    self.m_icons['led_red']   = \
-        self.m_imageLoader.loadImage("icons/icon_led_red_16.png")
-
-    row = 0
-    col = 0
-
-    # motors powered status
-    w = Label(wframe)
-    w['text']     = 'Motors'
-    w['width']    = width
-    w['justify']  = RIGHT
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E+W)
-    d = {'raw': None, 'var': None, 'w': w}
-    self.m_robotStatus['motors_label'] = d
-
-    col += 1
-
-    # motors icon
-    w = Label(wframe)
-    w['image'] = self.m_icons['led_dark']
-    w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=W+E)
-    d = {'raw': TriState.OFF, 'var': None, 'w': w}
-    self.m_robotStatus['motors_led'] = d
-
-    col += 1
-
-    # moving status
-    w = Label(wframe)
-    w['text']     = 'Moving'
-    w['width']    = width
-    w['justify']  = RIGHT
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E+W)
-    d = {'raw': None, 'var': None, 'w': w}
-    self.m_robotStatus['moving_label'] = d
-
-    col += 1
-
-    # moving icon
-    w = Label(wframe)
-    w['image'] = self.m_icons['led_dark']
-    w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=W+E)
-    d = {'raw': TriState.OFF, 'var': None, 'w': w}
-    self.m_robotStatus['moving_led'] = d
-
-    col += 1
-
-    # robot alarms status
-    w = Label(wframe)
-    w['text']     = 'Alarms'
-    w['width']    = width
-    w['justify']  = RIGHT
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E+W)
-    d = {'raw': None, 'var': None, 'w': w}
-    self.m_robotStatus['alarms_label'] = d
-
-    col += 1
-
-    # alarms icon
-    w = Label(wframe)
-    w['image'] = self.m_icons['led_dark']
-    w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=W+E)
-    d = {'raw': TriState.OFF, 'var': None, 'w': w}
-    self.m_robotStatus['alarms_led'] = d
-
-    col += 1
-
-    # robot estop status
-    w = Label(wframe)
-    w['text']     = 'EStop'
-    w['width']    = width
-    w['justify']  = RIGHT
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E)
-    d = {'raw': None, 'var': None, 'w': w}
-    self.m_robotStatus['estop_label'] = d
-
-    col += 1
-
-    # estop icon
-    w = Label(wframe)
-    w['image'] = self.m_icons['led_dark']
-    w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=E)
-    d = {'raw': TriState.OFF, 'var': None, 'w': w}
-    self.m_robotStatus['estop_led'] = d
-
-  #
   ## \brief Create subsystem state lower center panel headers.
   ##
   ## \param parent  Parent widget
@@ -687,7 +482,7 @@ class window(Frame):
 
     padx = 15
 
-    self.m_subsysState['powertrain'] = { }
+    self.m_subsysState['powertrain'] = {}
 
     # Left-Front motor/wheel/tire
     wsubframe = Frame(wframe);
@@ -727,10 +522,10 @@ class window(Frame):
   ## \brief Create joint state lower center panel state.
   ##
   ## \param wframe    Frame to add labels and fields.
-  ## \param jointName Name of joint (motor)
+  ## \param ptName    Powertrain name (and key).
   ## \param onLeft    Labeling is [not] on the left.
   #
-  def createPowertrainSubpanel(self, wframe, jointName, onLeft):
+  def createPowertrainSubpanel(self, wframe, ptName, onLeft):
     d = {}
 
     w = Dial(wframe,
@@ -748,9 +543,9 @@ class window(Frame):
         'type':     'dial'}
 
     w = Dial(wframe,
-      gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
-      gauge_size=100, gauge_res=0.5, gauge_label="qpps",
-      gauge_show_val=True, gauge_moving_win=4,
+      gauge_val_min=-12000, gauge_val_max=12000, gauge_val_home=0,
+      gauge_size=100, gauge_res=10, gauge_label="qpps",
+      gauge_show_val=True, gauge_val_fmt="%.0f", gauge_moving_win=4,
       gauge_dial_image="GaugeDialRedGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
@@ -763,6 +558,7 @@ class window(Frame):
 
     w = Counter(wframe, gauge_size=(15, 22),
       gauge_val_min=-4000000000, gauge_val_max=4000000000,
+      gauge_val_home=0,
       gauge_label="p", relief="sunken", borderwidth=3)
       #relief='ridge', borderwidth=1, bg="#000000")
     w.grid(row=1, column=0, columnspan=2);
@@ -772,123 +568,7 @@ class window(Frame):
         'widget':   w,
         'type':     'counter'}
 
-    self.m_subsysState['powertrain'][jointName] = d
-
-  #
-  ## \brief Create joint state lower center panel state.
-  ##
-  ## \param wframe    Frame to add labels and fields.
-  ## \param jointName Name of joint (motor)
-  ## \param onLeft    Labeling is [not] on the left.
-  #
-  def createOldPowertrainSubpanel(self, wframe, jointName, onLeft):
-
-    self.m_powertrain[jointName] = {}
-
-    if onLeft:
-      prefix    = ''
-      postfix   = ':'
-      colLabel  = 0
-      colField  = 1
-      justLabel = RIGHT
-    else:
-      prefix    = '  :'
-      postfix   = ''
-      colLabel  = 1
-      colField  = 0
-      justLabel = LEFT
-
-    widthLabel = 8
-    widthField = 12
-    row        = 0
-
-    # spacer
-    spacer = Label(wframe, text=' ', width=widthLabel)
-    spacer.grid(row=row, column=0, padx=0, pady=0, sticky=W+E)
-
-    row += 1
-
-    # encoder field label
-    w = Label(wframe)
-    w['text']     = prefix + 'Encoder' + postfix
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w['width']    = widthLabel
-    w['justify']  = justLabel
-    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
-
-    # encoder field
-    var = StringVar()
-    text, color = (0, fgColors['normal'])
-    var.set(text)
-    w = Label(wframe)
-    w['textvar']  = var
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w['width']    = widthField
-    w['fg']       = color
-    w['justify']  = RIGHT
-    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0, 'var': var, 'w': w}
-
-    self.m_powertrain[jointName]['encoder'] = d
-
-    row += 1
-
-    # speed field label
-    w = Label(wframe)
-    w['text']     = prefix + 'Speed' + postfix
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w['width']    = widthLabel
-    w['justify']  = justLabel
-    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
-
-    # speed field
-    var = StringVar()
-    text, color = (0, fgColors['normal'])
-    var.set(text)
-    w = Label(wframe)
-    w['textvar']  = var
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w['width']    = widthField
-    w['fg']       = color
-    w['justify']  = RIGHT
-    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0, 'var': var, 'w': w}
-
-    self.m_powertrain[jointName]['speed'] = d
-
-    row += 1
-
-    # power field label
-    w = Label(wframe)
-    w['text']     = prefix + 'Power' + postfix
-    w['anchor']   = W
-    w['relief']   = 'flat'
-    w['width']    = widthLabel
-    w['justify']  = justLabel
-    w.grid(row=row, column=colLabel, padx=0, pady=0, sticky=W)
-
-    # power field
-    var = StringVar()
-    text, color = (0.0, fgColors['normal'])
-    var.set(text)
-    w = Label(wframe)
-    w['textvar']  = var
-    w['anchor']   = E
-    w['relief']   = 'flat'
-    w['width']    = widthField
-    w['fg']       = color
-    w['justify']  = RIGHT
-    w.grid(row=row, column=colField, padx=0, pady=0, sticky=W)
-
-    d = {'raw': 0.0, 'var': var, 'w': w}
-
-    self.m_powertrain[jointName]['power'] = d
+    self.m_subsysState['powertrain'][ptName] = d
 
   #
   ## \brief Create gui right hand side buttons.
@@ -902,8 +582,8 @@ class window(Frame):
     row = 0;
 
     # estop
-    w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png",
-        self.cbEStop, fg='red')
+    w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png", self.cbEStop,
+                                  fg='red')
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_icons['estop_reset'] = \
         self.m_imageLoader.loadImage("icons/icon_estop_reset.png")
@@ -1014,7 +694,12 @@ class window(Frame):
   ## \brief Reset trip meter callback.
   #
   def cbResetTripMeter(self):
-    self.showInfo("reset trip meter.")
+    key = 'odometer'
+    od = self.m_robotState[key]['raw_val']
+    key = 'trip_meter'
+    self.m_robotState[key]['raw_val'] = od # offset
+    self.m_robotState[key]['widget'].update(0.0)
+    self.showInfo("Trip meter reset.")
 
   #
   ## \brief Move forward callback.
@@ -1219,29 +904,169 @@ class window(Frame):
     dlg = AboutDlg(master=self, info=prodInfo, app_ver=appVersion)
   
   def cbDebug(self):
-    msg = RobotStatusExtended()
-    msg.mode.val = RobotMode.MANUAL 
-    msg.e_stopped.val = TriState.TRUE
-    msg.drives_powered.val = TriState.ON
-    msg.motion_possible.val = TriState.ON
-    msg.in_motion.val = TriState.ON
-    msg.in_error.val = TriState.TRUE
-    msg.battery = 72.2
-    msg.is_charging.val = TriState.TRUE
-    msg.voltage = 11.2
-    msg.current = 12.1
-    msg.temp = 35.2
-    msg.aux_batt_en.val = TriState.TRUE
-    msg.aux_5v_en.val = TriState.TRUE
-    self.updateRobotStatus(msg) 
+    #
+    # unknown state
+    #
+    if self.m_dbgSeq == 0:
+      # Robot status message
+      self.m_dbgStatusMsg.mode.val = RobotMode.UNKNOWN 
+      self.m_dbgStatusMsg.e_stopped.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.drives_powered.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.motion_possible.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.in_motion.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.in_error.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.battery = 0.0
+      self.m_dbgStatusMsg.is_charging.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.voltage = 0.0
+      self.m_dbgStatusMsg.current = 0.0
+      self.m_dbgStatusMsg.temp = 0.0
+      self.m_dbgStatusMsg.aux_batt_en.val = TriState.UNKNOWN
+      self.m_dbgStatusMsg.aux_5v_en.val = TriState.UNKNOWN
 
-    msg = Dynamics()
-    msg.name = ['left_front', 'right_rear', 'right_front', 'left_rear']
-    msg.motor_encoder = [1925050, -457812, 1, 99992]
-    msg.motor_speed = [-5050, 345, 0, -500]
-    msg.motor_power_elec = [32.9, 0.009, 13.667, 19]
+      # Robot dyanmics message
+      self.m_dbgDynamicsMsg.robot_odometer = 0.0
+      self.m_dbgDynamicsMsg.robot_pose.x = 0.0
+      self.m_dbgDynamicsMsg.robot_pose.y = 0.0
+      self.m_dbgDynamicsMsg.robot_pose.theta = 0.0
+      self.m_dbgDynamicsMsg.robot_velocity = 0.0
+      self.m_dbgDynamicsMsg.name = [
+        'left_front', 'right_front', 'left_rear', 'right_rear']
+      self.m_dbgDynamicsMsg.motor_encoder = [0, 0, 0, 0]
+      self.m_dbgDynamicsMsg.motor_speed = [0, 0, 0, 0]
+      self.m_dbgDynamicsMsg.motor_power_elec = [0.0, 0.0, 0.0, 0.0]
 
-    #self.updateDynamics(msg) 
+    #
+    # typical start state
+    #
+    elif self.m_dbgSeq == 1:
+      # Robot status message
+      self.m_dbgStatusMsg.mode.val = RobotMode.AUTO 
+      self.m_dbgStatusMsg.e_stopped.val = TriState.FALSE
+      self.m_dbgStatusMsg.drives_powered.val = TriState.TRUE
+      self.m_dbgStatusMsg.motion_possible.val = TriState.TRUE
+      self.m_dbgStatusMsg.in_motion.val = TriState.FALSE
+      self.m_dbgStatusMsg.in_error.val = TriState.FALSE
+      self.m_dbgStatusMsg.battery = 72.3
+      self.m_dbgStatusMsg.is_charging.val = TriState.FALSE
+      self.m_dbgStatusMsg.voltage = 11.2
+      self.m_dbgStatusMsg.current = 12.5
+      self.m_dbgStatusMsg.temp = 35.9
+      self.m_dbgStatusMsg.aux_batt_en.val = TriState.TRUE
+      self.m_dbgStatusMsg.aux_5v_en.val = TriState.TRUE
+
+    #
+    # operational state
+    #
+    else:
+      # Robot status message
+      # mode
+      self.m_dbgStatusMsg.mode.val = random.choice([RobotMode.AUTO,
+                                                    RobotMode.MANUAL])
+      # not in estop
+      if random.random() < 0.95:
+        self.m_dbgStatusMsg.e_stopped.val = TriState.FALSE
+      # estopped
+      else:
+        self.m_dbgStatusMsg.e_stopped.val = TriState.TRUE
+
+      # in estop
+      if self.m_dbgStatusMsg.e_stopped.val == TriState.TRUE:
+        self.m_dbgStatusMsg.in_error.val = TriState.TRUE
+        self.m_dbgStatusMsg.drives_powered.val = TriState.OFF
+        self.m_dbgStatusMsg.in_motion.val = TriState.FALSE
+        self.m_dbgStatusMsg.current = random.uniform(0.0, 0.4)
+      # not in estop
+      else:
+        # not alarmed
+        if random.random() < 0.9:
+          self.m_dbgStatusMsg.in_error.val = TriState.FALSE
+          self.m_dbgStatusMsg.motion_possible.val = TriState.TRUE
+          if random.random() < 0.98:
+            self.m_dbgStatusMsg.in_motion.val = TriState.TRUE
+          else:
+            self.m_dbgStatusMsg.in_motion.val = TriState.FALSE
+        # alarmed
+        else:
+          self.m_dbgStatusMsg.in_error.val = TriState.TRUE
+          self.m_dbgStatusMsg.motion_possible.val = TriState.FALSE
+          self.m_dbgStatusMsg.in_motion.val = TriState.FALSE
+        self.m_dbgStatusMsg.drives_powered.val = TriState.TRUE
+        # current
+        r = random.uniform(-0.5, 0.5)
+        self.m_dbgStatusMsg.current += r
+        if self.m_dbgStatusMsg.current < 0.0:
+          self.m_dbgStatusMsg.current = 25.0
+        elif self.m_dbgStatusMsg.current > 25.0:
+          self.m_dbgStatusMsg.current = 25.0
+        # charging toggle
+        if self.m_dbgStatusMsg.is_charging.val == TriState.TRUE:
+          if self.m_dbgStatusMsg.battery > 95.0:
+            self.m_dbgStatusMsg.is_charging.val = TriState.FALSE
+        else:
+          if self.m_dbgStatusMsg.battery < 5.0:
+            self.m_dbgStatusMsg.is_charging.val = TriState.TRUE
+        # is charging
+        if self.m_dbgStatusMsg.is_charging.val == TriState.TRUE:
+          r = random.uniform(0.0, 8.0)
+        # is not charging
+        else:
+          r = random.uniform(-8.0, 0.0)
+        # battery
+        self.m_dbgStatusMsg.battery += r
+        if self.m_dbgStatusMsg.battery < 0.0:
+          self.m_dbgStatusMsg.battery = 0.0
+        elif self.m_dbgStatusMsg.battery > 100.0:
+          self.m_dbgStatusMsg.battery = 100.0
+        # voltage
+        self.m_dbgStatusMsg.voltage = 11.2
+        # temperature
+        r = random.uniform(-1.0, 1.0)
+        self.m_dbgStatusMsg.temp += r
+        if self.m_dbgStatusMsg.temp < 0.0:
+          self.m_dbgStatusMsg.temp = 0.0
+        elif self.m_dbgStatusMsg.temp > 85.0:
+          self.m_dbgStatusMsg.temp = 85.0
+      # aux enables
+      r = random.random()
+      if r < 0.7:
+        self.m_dbgStatusMsg.aux_batt_en.val = TriState.TRUE
+      else:
+        self.m_dbgStatusMsg.aux_batt_en.val = TriState.FALSE
+      r = random.random()
+      if r < 0.7:
+        self.m_dbgStatusMsg.aux_5v_en.val = TriState.TRUE
+      else:
+        self.m_dbgStatusMsg.aux_5v_en.val = TriState.FALSE
+
+      # Robot dyanmics message
+      if self.m_dbgStatusMsg.in_motion.val == TriState.TRUE:
+        for i in range(0, 4):
+          if random.random() < 0.9:
+            r = random.uniform(-100.0, 100.0)
+          else:
+            r = random.uniform(-4000.0, 4000.0)
+          self.m_dbgDynamicsMsg.motor_speed[i] += int(r)
+      else:
+        for i in range(0, 4):
+          self.m_dbgDynamicsMsg.motor_speed[i] = 0
+      vel = 0.0
+      for i in range(0, 4):
+        speed = self.m_dbgDynamicsMsg.motor_speed[i]
+        self.m_dbgDynamicsMsg.motor_encoder[i] += speed * 16
+        vel += speed / (16.0 * 30.0)
+        self.m_dbgDynamicsMsg.motor_power_elec[i] = abs(speed)/200.0 * 4.5
+      vel = abs(vel/4.0)
+      vel = vel * 2.0 * math.pi * 0.065
+      self.m_dbgDynamicsMsg.robot_velocity = vel
+      self.m_dbgDynamicsMsg.robot_odometer += vel
+
+    #
+    # Update
+    #
+    self.updateRobotStatus(self.m_dbgStatusMsg) 
+    self.updateDynamics(self.m_dbgDynamicsMsg) 
+
+    self.m_dbgSeq += 1
 
   #
   ## \brief Update robot status.
@@ -1360,31 +1185,43 @@ class window(Frame):
   ## \param dynamics  Robot current dynamics state.
   #
   def showDynamics(self, dynamics):
+    key = 'velocity'
+    val = dynamics.robot_velocity
+    self.m_robotState[key]['widget'].update(val)
+    self.m_robotState[key]['raw_val'] = val
+
+    key = 'odometer'
+    od  = dynamics.robot_odometer
+    self.m_robotState[key]['widget'].update(od)
+    self.m_robotState[key]['raw_val'] = od
+
+    key = 'trip_meter'
+    val = od - self.m_robotState[key]['raw_val']
+    self.m_robotState[key]['widget'].update(val)
+
     for i in range(0, len(dynamics.name)):
       name = dynamics.name[i]
-      if not self.m_powertrain.has_key(name):
+      if not self.m_subsysState['powertrain'].has_key(name):
         continue
 
-      key = 'encoder'
-      val = dynamics.motor_encoder[i]
-      if self.m_powertrain[name][key]['raw'] != val:
-        text = "%d" % (val)
-        self.m_powertrain[name][key]['var'].set(text)
-        self.m_powertrain[name][key]['raw'] = val
+      powertrain = self.m_subsysState['powertrain'][name]
 
-      key = 'speed'
-      val = dynamics.motor_speed[i]
-      if self.m_powertrain[name][key]['raw'] != val:
-        text = "%d" % (val)
-        self.m_powertrain[name][key]['var'].set(text)
-        self.m_powertrain[name][key]['raw'] = val
-
-      key = 'power'
+      key = 'watts'
       val = dynamics.motor_power_elec[i]
-      if self.m_powertrain[name][key]['raw'] != val:
-        text = "%5.1fW" % (val)
-        self.m_powertrain[name][key]['var'].set(text)
-        self.m_powertrain[name][key]['raw'] = val
+      powertrain[key]['widget'].update(val)
+      powertrain[key]['raw_val'] = val
+
+      key = 'qpps'
+      val = dynamics.motor_speed[i]
+      powertrain[key]['widget'].update(val)
+      powertrain[key]['widget'].update(val)
+      powertrain[key]['raw_val'] = val
+
+      key = 'pulses'
+      val = dynamics.motor_encoder[i]
+      powertrain[key]['widget'].update(val)
+      powertrain[key]['widget'].update(val)
+      powertrain[key]['raw_val'] = val
 
   #
   ## \brief Show servo health.

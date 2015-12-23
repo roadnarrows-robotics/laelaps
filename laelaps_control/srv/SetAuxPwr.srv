@@ -1,0 +1,7 @@
+### Laelaps laelaps_control/SetAuxPwr service
+# 
+# Set top deck auxilliary power out state.
+#
+
+AuxPwr[] aux     # Auxilliary power 
+---
