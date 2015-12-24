@@ -1420,7 +1420,7 @@ Options and arguments:
     self._Argv0 = kwargs.get('argv0', __file__)
 
     # defaults
-    kwargs['debug'] = True # Set to False when finished debugging.
+    kwargs['debug'] = False # Set to False when finished debugging.
 
     # parse command-line options
     try:

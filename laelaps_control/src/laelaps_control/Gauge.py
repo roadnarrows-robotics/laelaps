@@ -402,7 +402,7 @@ class Counter(Frame):
     return passthru
 
   #
-  ## \brief Create gui widgets.
+  ## \brief Create Counter gui widgets.
   #
   def createGauge(self):
     imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
