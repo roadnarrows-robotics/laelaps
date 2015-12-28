@@ -87,6 +87,7 @@
 //
 // ROS generated Laelaps messages.
 //
+#include "laelaps_control/AuxPwr.h"
 #include "laelaps_control/Caps.h"
 #include "laelaps_control/Dimensions.h"
 #include "laelaps_control/Dynamics.h"
@@ -125,6 +126,7 @@
 #include "laelaps_control/Release.h"
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
+#include "laelaps_control/SetAuxPwr.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
@@ -503,6 +505,17 @@ namespace laelaps_control
      */
     bool resetEStop(laelaps_control::ResetEStop::Request  &req,
                     laelaps_control::ResetEStop::Response &rsp);
+
+    /*!
+     * \brief Set robot's auxilliary battery and/or 5V power out.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool setAuxPower(laelaps_control::SetAuxPwr::Request  &req,
+                     laelaps_control::SetAuxPwr::Response &rsp);
 
     /*!
      * \brief Set robot's manual/auto mode service callback.

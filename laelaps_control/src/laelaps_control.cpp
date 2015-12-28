@@ -82,6 +82,7 @@
 //
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
+#include "industrial_msgs/TriState.h"
 #include "industrial_msgs/RobotStatus.h"
 #include "sensor_msgs/Illuminance.h"
 #include "sensor_msgs/Imu.h"
@@ -91,6 +92,7 @@
 //
 // ROS generated Laelaps messages.
 //
+#include "laelaps_control/AuxPwr.h"
 #include "laelaps_control/Caps.h"
 #include "laelaps_control/Dimensions.h"
 #include "laelaps_control/Dynamics.h"
@@ -129,6 +131,7 @@
 #include "laelaps_control/Release.h"
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
+#include "laelaps_control/SetAuxPwr.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
@@ -297,6 +300,11 @@ void LaelapsControl::advertiseServices()
   strSvc = "reset_estop";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::resetEStop,
+                                          &(*this));
+
+  strSvc = "set_aux_power";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::setAuxPower,
                                           &(*this));
 
   strSvc = "set_robot_mode";
@@ -689,6 +697,25 @@ bool LaelapsControl::resetEStop(ResetEStop::Request  &req,
   return true;
 }
 
+bool LaelapsControl::setAuxPower(SetAuxPwr::Request  &req,
+                                 SetAuxPwr::Response &rsp)
+{
+  const char *svc = "set_aux_power";
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  for(size_t i = 0; i < req.aux.size(); ++i)
+  {
+    m_robot.setAuxPower(req.aux[i].name, (LaeTriState)req.aux[i].state.val);
+    ROS_INFO("Aux. %s power %s.", req.aux[i].name.c_str(),
+        (req.aux[i].state.val == industrial_msgs::TriState::ENABLED?
+         "enabled": "disabled"));
+
+  }
+
+  return true;
+}
+
 bool LaelapsControl::setRobotMode(SetRobotMode::Request  &req,
                                   SetRobotMode::Response &rsp)
 {
@@ -993,6 +1020,8 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
   msg.current         = status.m_fCurrent;
   msg.voltage         = status.m_fVoltage;
   msg.temp            = status.m_fTemperature;
+  msg.aux_batt_en.val = status.m_eAuxBattEn;
+  msg.aux_5v_en.val   = status.m_eAux5VEn;
 
   for(size_t i = 0; i < status.m_vecCtlrHealth.size(); ++i)
   {
