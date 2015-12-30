@@ -1015,7 +1015,7 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
   //
   // Set extended robot status values.
   //
-  msg.battery         = status.m_fBattery;
+  msg.battery         = status.m_fBatterySoC;
   msg.is_charging.val = status.m_bIsCharging;
   msg.current         = status.m_fCurrent;
   msg.voltage         = status.m_fVoltage;
