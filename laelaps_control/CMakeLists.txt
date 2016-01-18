@@ -28,6 +28,7 @@ catkin_python_setup()
 add_message_files(
   DIRECTORY msg
   FILES 
+    Alarms.msg
     AmbientLightSensorCaps.msg
     AuxPwr.msg
     Caps.msg

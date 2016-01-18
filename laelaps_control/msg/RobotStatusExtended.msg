@@ -24,5 +24,6 @@ float64                   current           # estimated total current draw [A]
 float64                   temp              # interior temperature [C]
 industrial_msgs/TriState  aux_batt_en       # deck aux. batt. out enable: ON OFF
 industrial_msgs/TriState  aux_5v_en         # deck aux. 5V out enable: ON OFF
+Alarms                    alarms            # system alarm state
 MotorCtlrHealth[]         motor_ctlr_health # motor controllers health
 MotorHealth[]             motor_health      # motors health

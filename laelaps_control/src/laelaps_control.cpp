@@ -18,7 +18,7 @@
  * \author Robin Knight (robin.knight@roadnarrows.com)
  *
  * \par Copyright:
- * (C) 2015  RoadNarrows
+ * (C) 2015-2016  RoadNarrows
  * (http://www.roadnarrows.com)
  * \n All Rights Reserved
  */
@@ -92,6 +92,7 @@
 //
 // ROS generated Laelaps messages.
 //
+#include "laelaps_control/Alarms.h"
 #include "laelaps_control/AuxPwr.h"
 #include "laelaps_control/Caps.h"
 #include "laelaps_control/Dimensions.h"
@@ -1023,6 +1024,10 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
   msg.aux_batt_en.val = status.m_eAuxBattEn;
   msg.aux_5v_en.val   = status.m_eAux5VEn;
 
+  msg.alarms.is_critical  = status.m_alarms.m_bIsCritical;
+  msg.alarms.alarms       = status.m_alarms.m_uAlarms;
+  msg.alarms.warnings     = status.m_alarms.m_uWarnings;
+
   for(size_t i = 0; i < status.m_vecCtlrHealth.size(); ++i)
   {
     LaeRptMotorCtlrHealth  &h = status.m_vecCtlrHealth[i];
@@ -1031,7 +1036,10 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
     health.name     = h.m_strName;
     health.temp     = h.m_fTemperature;
     health.voltage  = h.m_fVoltage;
-    health.alarms   = h.m_uAlarms;
+
+    health.alarms.is_critical = h.m_alarms.m_bIsCritical;
+    health.alarms.alarms      = h.m_alarms.m_uAlarms;
+    health.alarms.warnings    = h.m_alarms.m_uWarnings;
 
     msg.motor_ctlr_health.push_back(health);
   }
@@ -1045,7 +1053,10 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
     health.temp     = h.m_fTemperature;
     health.voltage  = h.m_fVoltage;
     health.current  = h.m_fCurrent;
-    health.alarms   = h.m_uAlarms;
+
+    health.alarms.is_critical = h.m_alarms.m_bIsCritical;
+    health.alarms.alarms      = h.m_alarms.m_uAlarms;
+    health.alarms.warnings    = h.m_alarms.m_uWarnings;
 
     msg.motor_health.push_back(health);
   }
