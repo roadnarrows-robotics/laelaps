@@ -256,7 +256,7 @@ void LaelapsControl::advertiseServices()
   strSvc = "get_imu_alt";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getImuAlt,
-                                          &(*this));
+                                          this);
 
   strSvc = "get_range";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
