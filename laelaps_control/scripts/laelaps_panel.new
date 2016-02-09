@@ -766,10 +766,10 @@ class window(Frame):
     pass
   
   #
-  ## \brief (Reset) emergency stop button callback.
+  ## \brief (Reset) Emergency stop button callback.
   #
   def cbEStop(self):
-    if not self.m_robotStatus['estop_led']['raw']:
+    if self.m_robotState['estop']['raw_val'] != TriState.TRUE:
       self.showResetEStop()
       try:
         rospy.wait_for_service("laelaps_control/estop", timeout=1)
