@@ -929,9 +929,9 @@ void LaelapsControl::updateDynamicsMsg(Dynamics &msg)
   // Clear previous state data.
   //
   msg.name.clear();
-  msg.wheel_odometer.clear();
-  msg.wheel_linear_velocity.clear();
-  msg.wheel_angular_velocity.clear();
+  msg.position.clear();
+  msg.velocity.clear();
+  msg.torque.clear();
   msg.motor_encoder.clear();
   msg.motor_speed.clear();
   msg.motor_power_elec.clear();
@@ -948,22 +948,23 @@ void LaelapsControl::updateDynamicsMsg(Dynamics &msg)
   msg.robot_pose.x      =  dynamics.m_pose.m_x;
   msg.robot_pose.y      =  dynamics.m_pose.m_y;
   msg.robot_pose.theta  =  dynamics.m_pose.m_theta;
+  msg.robot_odometer    =  dynamics.m_fOdometer;
   msg.robot_velocity    =  dynamics.m_fVelocity;
 
   //
   // Set powertrain values.
   //
-  for(size_t i = 0; i < dynamics.m_vecPowertrain.size(); ++i)
+  for(size_t i = 0; i < dynamics.m_vecDynPowertrain.size(); ++i)
   {
-    LaePowertrain &pt = dynamics.m_vecPowertrain[i];
+    LaeRptDynPowertrain &pt = dynamics.m_vecDynPowertrain[i];
 
     msg.name.push_back(pt.m_strName);
-    msg.wheel_odometer.push_back(pt.m_state.m_fOdometer);
-    msg.wheel_linear_velocity.push_back(pt.m_state.m_fVelocity);
-    msg.wheel_angular_velocity.push_back(pt.m_state.m_fVelAng);
-    msg.motor_encoder.push_back(pt.m_state.m_nEncoder);
-    msg.motor_speed.push_back(pt.m_state.m_nSpeed);
-    msg.motor_power_elec.push_back(pt.m_state.m_fPe);
+    msg.position.push_back(pt.m_fPosition);
+    msg.velocity.push_back(pt.m_fVelocity);
+    msg.torque.push_back(pt.m_fTorque);
+    msg.motor_encoder.push_back(pt.m_nEncoder);
+    msg.motor_speed.push_back(pt.m_nSpeed);
+    msg.motor_power_elec.push_back(pt.m_fPe);
   }
 }
 

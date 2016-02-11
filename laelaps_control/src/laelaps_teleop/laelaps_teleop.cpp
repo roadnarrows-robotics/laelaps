@@ -154,9 +154,7 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
   m_nWdRobotTimeout = countsPerSecond(5.0);
   m_bHasFullComm    = false;
 
-  m_maxRadiansPerSec = (double)LaeMaxQpps *
-                        ( (M_TAU / (double)LaeQuadPulsesPerRev) /
-                           LaeMotorGearRatio );
+  m_maxRadiansPerSec = (double)LaeMotorRatedMaxRpm / 60.0 * M_TAU;
 
   m_buttonState = map_list_of
       (ButtonIdEStop,   0)
