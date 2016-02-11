@@ -353,7 +353,7 @@ class window(Frame):
   
     w = Counter(subsubframe, gauge_size=(17, 25),
         gauge_val_min=0.0, gauge_val_max=1000.0, gauge_res=0.01, padx=0,
-        gauge_label="trip", relief="sunken", borderwidth=3)
+        gauge_label="trip", relief="flat", borderwidth=3)
     w.grid(row=0, column=1, columnspan=3, padx=0, sticky=S+E)
     self.m_robotState['trip_meter'] = {
         'raw_val':  0.0,        # offset from odometer
@@ -441,7 +441,7 @@ class window(Frame):
 
     w = Counter(subframe, gauge_size=(20, 30),
         gauge_val_min=0.0, gauge_val_max=1000000.0, gauge_res=0.01,
-        gauge_label="m", relief="sunken", borderwidth=3)
+        gauge_label="m", relief="flat", borderwidth=3)
     w.grid(row=2, column=0, columnspan=3, padx=0, sticky=S+W)
     self.m_robotState['odometer'] = {
         'raw_val':  0.0,
@@ -559,7 +559,7 @@ class window(Frame):
     w = Counter(wframe, gauge_size=(15, 22),
       gauge_val_min=-4000000000, gauge_val_max=4000000000,
       gauge_val_home=0,
-      gauge_label="p", relief="sunken", borderwidth=3)
+      gauge_label="p", relief="flat", borderwidth=3)
       #relief='ridge', borderwidth=1, bg="#000000")
     w.grid(row=1, column=0, columnspan=2);
     d['pulses'] = {
