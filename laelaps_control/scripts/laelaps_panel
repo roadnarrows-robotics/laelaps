@@ -379,7 +379,7 @@ class window(Frame):
         'type':     'dial'}
   
     w = Dial(wframe,
-        gauge_val_min=0.0, gauge_val_max=25.0, gauge_val_home=0,
+        gauge_val_min=0.0, gauge_val_max=10.0, gauge_val_home=0,
         gauge_size=150, gauge_res=0.5, gauge_label="m/s",
         gauge_show_val=True, gauge_moving_win=4,
         gauge_dial_image="GaugeDialGreenRed.png",
@@ -1185,7 +1185,7 @@ class window(Frame):
   #
   def showDynamics(self, dynamics):
     key = 'velocity'
-    val = dynamics.robot_velocity
+    val = math.fabs(dynamics.robot_velocity)
     self.m_robotState[key]['widget'].update(val)
     self.m_robotState[key]['raw_val'] = val
 
@@ -1213,12 +1213,10 @@ class window(Frame):
       key = 'qpps'
       val = dynamics.motor_speed[i]
       powertrain[key]['widget'].update(val)
-      powertrain[key]['widget'].update(val)
       powertrain[key]['raw_val'] = val
 
       key = 'pulses'
       val = dynamics.motor_encoder[i]
-      powertrain[key]['widget'].update(val)
       powertrain[key]['widget'].update(val)
       powertrain[key]['raw_val'] = val
 

@@ -1202,6 +1202,7 @@ class window(Frame):
       name = dynamics.name[i]
       if not self.m_subsysState['powertrain'].has_key(name):
         continue
+      print 'rdk', name
 
       powertrain = self.m_subsysState['powertrain'][name]
 
@@ -1213,12 +1214,10 @@ class window(Frame):
       key = 'qpps'
       val = dynamics.motor_speed[i]
       powertrain[key]['widget'].update(val)
-      powertrain[key]['widget'].update(val)
       powertrain[key]['raw_val'] = val
 
       key = 'pulses'
       val = dynamics.motor_encoder[i]
-      powertrain[key]['widget'].update(val)
       powertrain[key]['widget'].update(val)
       powertrain[key]['raw_val'] = val
 
