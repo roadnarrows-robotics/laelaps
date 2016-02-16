@@ -150,12 +150,12 @@ namespace laelaps_control
     enum ButtonId
     {
       ButtonIdEStop   = rnr::Xbox360FeatIdBButton,      ///< emergency stop
-    //ButtonIdGovUp   = rnr::Xbox360FeatIdPadUp,        ///< governor speed up
-    //ButtonIdGovDown = rnr::Xbox360FeatIdPadDown,      ///< governor speed down
+      ButtonIdGovUp   = rnr::Xbox360FeatIdPadUp,        ///< governor speed up
+      ButtonIdGovDown = rnr::Xbox360FeatIdPadDown,      ///< governor speed down
       ButtonIdPause   = rnr::Xbox360FeatIdBack,         ///< pause teleop
       ButtonIdStart   = rnr::Xbox360FeatIdStart,        ///< start teleop
       ButtonIdMoveX   = rnr::Xbox360FeatIdLeftJoyX,     ///< move fwd/bwd
-      ButtonIdMoveY   = rnr::Xbox360FeatIdLeftJoyY,     ///< turn left/right
+      ButtonIdMoveY   = rnr::Xbox360FeatIdRightJoyY,    ///< turn left/right
     //ButtonIdBrake   = rnr::Xbox360FeatIdLeftTrigger,  ///< ease brake
     };
 
@@ -235,6 +235,11 @@ namespace laelaps_control
      */
     void putRobotInSafeMode(bool bHard);
 
+    /*!
+     * \brief Test if robot is allowed to move.
+     *
+     * \return Returns true or false.
+     */
     bool canMove()
     {
       if((m_eState == TeleopStateReady) &&
@@ -276,8 +281,8 @@ namespace laelaps_control
     double            m_hz;       ///< application nominal loop rate
 
     // robot
- 
     double    m_maxRadiansPerSec; ///< max wheel-shaft radians/second
+    double    m_fGovernor;        ///< software velocity governor
 
     // ROS services, publishers, subscriptions.
     MapServices       m_services;       ///< laelaps teleop as server services
@@ -422,34 +427,97 @@ namespace laelaps_control
     // Xbox Actions
     //..........................................................................
 
+    /*!
+     * \brief Convert ROS Xbox360 message to button state.
+     *
+     * \param msg                 Message.
+     * \param [out] buttonState   Button statue.
+     */
     void msgToState(const hid::Controller360State &msg,
                     ButtonState                   &buttonState);
 
+    /*!
+     * \brief Test if button toggle from off to on.
+     *
+     * \param id            Button id.
+     * \param buttonState   Button state array.
+     *
+     * \return Returns true or false.
+     */
     bool buttonOffToOn(int id, ButtonState &buttonState)
     {
       return (m_buttonState[id] == 0) && (buttonState[id] == 1);
     }
 
+    /*!
+     * \brief Test if button state has changed.
+     *
+     * \param id            Button id.
+     * \param buttonState   Button state array.
+     *
+     * \return Returns true or false.
+     */
     bool buttonDiff(int id, ButtonState &buttonState)
     {
       return m_buttonState[id] != buttonState[id];
     }
 
+    /*!
+     * \brief Execute all new button initiated actions.
+     *
+     * \param buttonState   Button state array.
+     */
     void execAllButtonActions(ButtonState &buttonState);
 
+    /*!
+     * \brief Execute start button action.
+     *
+     * \param buttonState   Button state array.
+     */
     void buttonStart(ButtonState &buttonState);
 
+    /*!
+     * \brief Execute pause button action.
+     *
+     * \param buttonState   Button state array.
+     */
     void buttonPause(ButtonState &buttonState);
 
+    /*!
+     * \brief Execute emergency stop button action.
+     *
+     * \param buttonState   Button state array.
+     */
     void buttonEStop(ButtonState &buttonState);
 
-    //void buttonGovernorUp(ButtonState &buttonState);
+    /*!
+     * \brief Execute software governor up button action.
+     *
+     * \param buttonState   Button state array.
+     */
+    void buttonGovernorUp(ButtonState &buttonState);
 
-    //void buttonGovernorDown(ButtonState &buttonState);
+    /*!
+     * \brief Execute software governor down button action.
+     *
+     * \param buttonState   Button state array.
+     */
+    void buttonGovernorDown(ButtonState &buttonState);
 
+    /*!
+     * \brief Execute brake button action.
+     *
+     * \param buttonState   Button state array.
+     */
     void buttonBrake(ButtonState &buttonState);
 
+    /*!
+     * \brief Execute speed buttons action.
+     *
+     * \param buttonState   Button state array.
+     */
     void buttonSpeed(ButtonState &buttonState);
+
 
     //. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
     // Support 

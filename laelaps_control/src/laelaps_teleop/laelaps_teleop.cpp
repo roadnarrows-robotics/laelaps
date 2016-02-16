@@ -60,6 +60,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include <string>
 #include <map>
@@ -155,17 +156,17 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
   m_bHasFullComm    = false;
 
   m_maxRadiansPerSec = (double)LaeMotorRatedMaxRpm / 60.0 * M_TAU;
+  m_fGovernor        = 1.0;
 
   m_buttonState = map_list_of
       (ButtonIdEStop,   0)
-      //(ButtonIdGovUp,   0)
-      //(ButtonIdGovDown, 0)
+      (ButtonIdGovUp,   0)
+      (ButtonIdGovDown, 0)
+      //(ButtonIdBrake,   0)
       (ButtonIdPause,   0)
       (ButtonIdStart,   0)
       (ButtonIdMoveX,   0)
       (ButtonIdMoveY,   0);
-      //(ButtonIdBrake,   0)
-      //(ButtonIdSlew,    0);
 }
 
 LaelapsTeleop::~LaelapsTeleop()
@@ -492,8 +493,6 @@ void LaelapsTeleop::commCheck()
 
 void LaelapsTeleop::putRobotInSafeMode(bool bHard)
 {
-  static float  fGovDft = 0.20;
-
   // stop robot with 'parking' brake at full
   freeze();
 
@@ -514,12 +513,12 @@ void LaelapsTeleop::msgToState(const hid::Controller360State &msg,
                             ButtonState                   &buttonState)
 {
   buttonState[ButtonIdEStop]    = msg.b_button;
-  //buttonState[ButtonIdGovUp]    = msg.dpad_up;
-  //buttonState[ButtonIdGovDown]  = msg.dpad_down;
+  buttonState[ButtonIdGovUp]    = msg.dpad_up;
+  buttonState[ButtonIdGovDown]  = msg.dpad_down;
   buttonState[ButtonIdPause]    = msg.back_button;
   buttonState[ButtonIdStart]    = msg.start_button;
   buttonState[ButtonIdMoveX]    = msg.left_joy_x;
-  buttonState[ButtonIdMoveY]    = msg.left_joy_y;
+  buttonState[ButtonIdMoveY]    = msg.right_joy_y;
 }
 
 void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
@@ -529,7 +528,7 @@ void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
 
   //
   // Teleoperation state.
-  // /
+  //
   if( m_eState == TeleopStateReady )
   {
     buttonPause(buttonState);
@@ -544,15 +543,11 @@ void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
   //
   if( canMove() )
   {
+    buttonGovernorUp(buttonState);
+    buttonGovernorDown(buttonState);
     buttonSpeed(buttonState);
     buttonBrake(buttonState);
   }
-
-  //
-  // Other.
-  //
-  //buttonGovernorUp(buttonState);
-  //buttonGovernorDown(buttonState);
 }
 
 void LaelapsTeleop::buttonStart(ButtonState &buttonState)
@@ -634,12 +629,14 @@ void LaelapsTeleop::buttonEStop(ButtonState &buttonState)
   }
 }
 
-#if 0 // RDK
 void LaelapsTeleop::buttonGovernorUp(ButtonState &buttonState)
 {
   if( buttonOffToOn(ButtonIdGovUp, buttonState) )
   {
-    incrementGovernor(0.1);
+    if( m_fGovernor <= 0.9 )
+    {
+      m_fGovernor += 0.1;
+    }
   }
 }
 
@@ -647,10 +644,12 @@ void LaelapsTeleop::buttonGovernorDown(ButtonState &buttonState)
 {
   if( buttonOffToOn(ButtonIdGovDown, buttonState) )
   {
-    incrementGovernor(-0.1);
+    if( m_fGovernor >= 0.2 )
+    {
+      m_fGovernor -= 0.1;
+    }
   }
 }
-#endif // RDK
 
 void LaelapsTeleop::buttonBrake(ButtonState &buttonState)
 {
@@ -666,27 +665,17 @@ void LaelapsTeleop::buttonBrake(ButtonState &buttonState)
 #endif // RDK
 }
 
-#if 0 // RDK
-void LaelapsTeleop::buttonSlew(ButtonState &buttonState)
-{
-  float   slew;
-
-  if( buttonDiff(ButtonIdSlew, buttonState) )
-  {
-    slew = (float)buttonState[ButtonIdSlew]/(float)XBOX360_TRIGGER_MAX;
-
-    publishSlewCmd(slew);
-  }
-}
-#endif // RDK
-
 void LaelapsTeleop::buttonSpeed(ButtonState &buttonState)
 {
   double  joy_x;
   double  joy_y;
+  double  linear;
+  double  angular;
+  double  div;
   double  speedLeft;
   double  speedRight;
 
+  // joy button state [-32k, 32k]
   joy_x = (double)buttonState[ButtonIdMoveX];
   joy_y = (double)buttonState[ButtonIdMoveY];
 
@@ -702,13 +691,43 @@ void LaelapsTeleop::buttonSpeed(ButtonState &buttonState)
     return;
   }
 
+  // normalized linear and angular velocity components [-1.0, 1.0]
+  linear  = joy_x / (double)XBOX360_JOY_MAX;
+  angular = joy_y / (double)XBOX360_JOY_MAX;
+
+  // mix [-2.0, 2.0]
+  speedLeft  = linear + angular;
+  speedRight = linear - angular;
+
+  // apply software govenor
+  speedLeft  *= m_fGovernor;
+  speedRight *= m_fGovernor;
+
+  // calculate divider
+  if( fabs(speedLeft) > 1.0 )
+  {
+    div = fabs(speedLeft);
+  }
+  else if( fabs(speedRight) > 1.0 )
+  {
+    div = fabs(speedRight);
+  }
+  else
+  {
+    div = 1.0;
+  }
+
+  // normalize speed [-1.0, 1.0]
+  speedLeft  = fcap(speedLeft/div,  -1.0, 1.0);
+  speedRight = fcap(speedRight/div, -1.0, 1.0);
+
   // mix throttle x and y values
-  speedLeft   = (joy_x + joy_y) / (double)XBOX360_JOY_MAX;
-  speedRight  = (joy_y - joy_x) / (double)XBOX360_JOY_MAX;
+  //speedLeft   = (joy_x + joy_y) / (double)XBOX360_JOY_MAX;
+  //speedRight  = (joy_y - joy_x) / (double)XBOX360_JOY_MAX;
   
   // cap
-  speedLeft   = fcap(speedLeft, -1.0, 1.0);
-  speedRight  = fcap(speedRight, -1.0, 1.0);
+  //speedLeft   = fcap(speedLeft, -1.0, 1.0);
+  //speedRight  = fcap(speedRight, -1.0, 1.0);
 
   publishVelocities(speedLeft, speedRight);
 }
