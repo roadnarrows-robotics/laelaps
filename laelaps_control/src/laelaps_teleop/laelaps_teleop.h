@@ -154,8 +154,8 @@ namespace laelaps_control
       ButtonIdGovDown = rnr::Xbox360FeatIdPadDown,      ///< governor speed down
       ButtonIdPause   = rnr::Xbox360FeatIdBack,         ///< pause teleop
       ButtonIdStart   = rnr::Xbox360FeatIdStart,        ///< start teleop
-      ButtonIdMoveX   = rnr::Xbox360FeatIdLeftJoyX,     ///< move fwd/bwd
-      ButtonIdMoveY   = rnr::Xbox360FeatIdRightJoyY,    ///< turn left/right
+      ButtonIdMoveLin = rnr::Xbox360FeatIdLeftJoyY,     ///< move fwd/bwd
+      ButtonIdMoveAng = rnr::Xbox360FeatIdRightJoyX,    ///< turn left/right
     //ButtonIdBrake   = rnr::Xbox360FeatIdLeftTrigger,  ///< ease brake
     };
 

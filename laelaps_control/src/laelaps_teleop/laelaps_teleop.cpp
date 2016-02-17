@@ -165,8 +165,8 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
       //(ButtonIdBrake,   0)
       (ButtonIdPause,   0)
       (ButtonIdStart,   0)
-      (ButtonIdMoveX,   0)
-      (ButtonIdMoveY,   0);
+      (ButtonIdMoveLin, 0)
+      (ButtonIdMoveAng, 0);
 }
 
 LaelapsTeleop::~LaelapsTeleop()
@@ -363,7 +363,8 @@ void LaelapsTeleop::publishVelocities(double speedLeft, double speedRight)
   // publish
   m_publishers["/laelaps_control/set_velocities"].publish(msg);
 
-  ROS_DEBUG("Speed = %6.1lf%%, %6.1lf%%.", speedLeft*100.0, speedRight*100.0);
+  // RDK
+  ROS_INFO("Speed = %6.1lf%%, %6.1lf%%.", speedLeft*100.0, speedRight*100.0);
 }
 
 void LaelapsTeleop::publishRumbleCmd(int motorLeft, int motorRight)
@@ -517,8 +518,8 @@ void LaelapsTeleop::msgToState(const hid::Controller360State &msg,
   buttonState[ButtonIdGovDown]  = msg.dpad_down;
   buttonState[ButtonIdPause]    = msg.back_button;
   buttonState[ButtonIdStart]    = msg.start_button;
-  buttonState[ButtonIdMoveX]    = msg.left_joy_x;
-  buttonState[ButtonIdMoveY]    = msg.right_joy_y;
+  buttonState[ButtonIdMoveLin]  = msg.left_joy_y;
+  buttonState[ButtonIdMoveAng]  = msg.right_joy_x;
 }
 
 void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
@@ -633,9 +634,9 @@ void LaelapsTeleop::buttonGovernorUp(ButtonState &buttonState)
 {
   if( buttonOffToOn(ButtonIdGovUp, buttonState) )
   {
-    if( m_fGovernor <= 0.9 )
+    if( m_fGovernor <= 0.8 )
     {
-      m_fGovernor += 0.1;
+      m_fGovernor += 0.2;
     }
   }
 }
@@ -644,9 +645,9 @@ void LaelapsTeleop::buttonGovernorDown(ButtonState &buttonState)
 {
   if( buttonOffToOn(ButtonIdGovDown, buttonState) )
   {
-    if( m_fGovernor >= 0.2 )
+    if( m_fGovernor >= 0.4 )
     {
-      m_fGovernor -= 0.1;
+      m_fGovernor -= 0.2;
     }
   }
 }
@@ -676,17 +677,17 @@ void LaelapsTeleop::buttonSpeed(ButtonState &buttonState)
   double  speedRight;
 
   // joy button state [-32k, 32k]
-  joy_x = (double)buttonState[ButtonIdMoveX];
-  joy_y = (double)buttonState[ButtonIdMoveY];
+  joy_x = (double)buttonState[ButtonIdMoveLin];
+  joy_y = (double)buttonState[ButtonIdMoveAng];
 
   //
   // Note: laelaps_teleop has watchdog on this subscribed speed message. It
   // will timout and stop the robot if not sent frequently. So always send if
   // different or not zero.
   //
-  if( !buttonDiff(ButtonIdMoveX, buttonState) &&
-      !buttonDiff(ButtonIdMoveY, buttonState) &&
-      (joy_x == 0) && (joy_y == 0) )
+  if( !buttonDiff(ButtonIdMoveLin, buttonState) &&
+      !buttonDiff(ButtonIdMoveAng, buttonState) &&
+      (joy_x == 0.0) && (joy_y == 0.0) )
   {
     return;
   }
