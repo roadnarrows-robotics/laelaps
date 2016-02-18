@@ -96,6 +96,7 @@
 #include "laelaps_control/AuxPwr.h"
 #include "laelaps_control/Caps.h"
 #include "laelaps_control/Dimensions.h"
+#include "laelaps_control/DutyCycle.h"
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/Gpio.h"
 #include "laelaps_control/IlluminanceState.h"
@@ -133,6 +134,7 @@
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetAuxPwr.h"
+#include "laelaps_control/SetDutyCycles.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
@@ -306,6 +308,11 @@ void LaelapsControl::advertiseServices()
   strSvc = "set_aux_power";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::setAuxPower,
+                                          &(*this));
+
+  strSvc = "set_duty_cycles";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::setDutyCycles,
                                           &(*this));
 
   strSvc = "set_robot_mode";
@@ -717,6 +724,46 @@ bool LaelapsControl::setAuxPower(SetAuxPwr::Request  &req,
   return true;
 }
 
+bool LaelapsControl::setDutyCycles(SetDutyCycles::Request  &req,
+                                   SetDutyCycles::Response &rsp)
+{
+  const char     *svc = "set_duty_cycles";
+  static u32_t    seq = 0;
+  LaeMapDutyCycle duties;
+  int             rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  for(size_t i = 0; i < req.goal.names.size(); ++i)
+  {
+    duties[req.goal.names[i]] = req.goal.duties[i];
+  }
+
+  rc = m_robot.setDutyCycles(duties);
+ 
+  if( rc == LAE_OK )
+  {
+    stampHeader(rsp.actual.header, seq++);
+    
+    // RDK TODO get actual goal, not just copy target goal
+    rsp.actual = req.goal;
+
+    ROS_INFO("Robot duty cycles set.");
+    for(size_t i = 0; i < rsp.actual.names.size(); ++i)
+    {
+      ROS_INFO(" %-12s: duty=%4.2lf",
+          rsp.actual.names[i].c_str(), rsp.actual.duties[i]);
+    }
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed: %s(rc=%d).",
+          svc, getStrError(rc), rc);
+    return false;
+  }
+}
+
 bool LaelapsControl::setRobotMode(SetRobotMode::Request  &req,
                                   SetRobotMode::Response &rsp)
 {
@@ -1114,10 +1161,35 @@ void LaelapsControl::subscribeToTopics(int nQueueDepth)
 {
   string  strSub;
 
+  strSub = "set_duty_cycles";
+  m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+                                          &LaelapsControl::execSetDutyCycles,
+                                          &(*this));
+
   strSub = "set_velocities";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
                                           &LaelapsControl::execSetVelocities,
                                           &(*this));
+}
+
+void LaelapsControl::execSetDutyCycles(const laelaps_control::DutyCycle
+                                                                      &msgDuty)
+{
+  const char     *topic = "set_duty_cyles";
+  LaeMapDutyCycle duties;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), topic);
+
+  // set velocities
+  ROS_INFO("%s", topic);
+  for(int i=0; i<msgDuty.names.size(); ++i)
+  {
+    duties[msgDuty.names[i]] = msgDuty.duties[i];
+    ROS_INFO(" %-12s: duty=%4.2lf",
+        msgDuty.names[i].c_str(), msgDuty.duties[i]);
+  }
+
+  m_robot.setDutyCycles(duties);
 }
 
 void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)

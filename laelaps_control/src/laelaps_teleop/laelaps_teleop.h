@@ -84,6 +84,7 @@
 // ROS generated Laelaps messages.
 //
 #include "laelaps_control/ProductInfo.h"        // service
+#include "laelaps_control/DutyCycle.h"          // publish
 #include "laelaps_control/Velocity.h"           // publish
 
 //
@@ -149,14 +150,16 @@ namespace laelaps_control
      */
     enum ButtonId
     {
-      ButtonIdEStop   = rnr::Xbox360FeatIdBButton,      ///< emergency stop
-      ButtonIdGovUp   = rnr::Xbox360FeatIdPadUp,        ///< governor speed up
-      ButtonIdGovDown = rnr::Xbox360FeatIdPadDown,      ///< governor speed down
-      ButtonIdPause   = rnr::Xbox360FeatIdBack,         ///< pause teleop
-      ButtonIdStart   = rnr::Xbox360FeatIdStart,        ///< start teleop
-      ButtonIdMoveLin = rnr::Xbox360FeatIdLeftJoyY,     ///< move fwd/bwd
-      ButtonIdMoveAng = rnr::Xbox360FeatIdRightJoyX,    ///< turn left/right
-    //ButtonIdBrake   = rnr::Xbox360FeatIdLeftTrigger,  ///< ease brake
+      ButtonIdEStop       = rnr::Xbox360FeatIdBButton,  ///< emergency stop
+      ButtonIdGovUp       = rnr::Xbox360FeatIdPadUp,    ///< governor speed up
+      ButtonIdGovDown     = rnr::Xbox360FeatIdPadDown,  ///< governor speed down
+      ButtonIdMoveModeDec = rnr::Xbox360FeatIdPadLeft,  ///< move mode -
+      ButtonIdMoveModeInc = rnr::Xbox360FeatIdPadRight, ///< move mode +
+      ButtonIdPause       = rnr::Xbox360FeatIdBack,     ///< pause teleop
+      ButtonIdStart       = rnr::Xbox360FeatIdStart,    ///< start teleop
+      ButtonIdMoveLin     = rnr::Xbox360FeatIdLeftJoyY, ///< move fwd/bwd
+      ButtonIdMoveAng     = rnr::Xbox360FeatIdRightJoyX,  ///< turn left/right
+    //ButtonIdBrake     = rnr::Xbox360FeatIdLeftTrigger,  ///< ease brake
     };
 
     /*! teleop button state type */
@@ -171,6 +174,17 @@ namespace laelaps_control
       LEDPatOn     = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox on pattern
       LEDPatPaused = XBOX360_LED_PAT_4_ON,        ///< pause teleop
       LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< ready to teleop
+    };
+
+    /*!
+     * \brief Move modes.
+     */
+    enum MoveMode
+    {
+      MoveModeVelocity,   ///< move by specifying angular velocites (vel PID)
+      MoveModeDutyCycle,  ///< move by specifying motor duty cycles (open loop)
+    //MoveModeTist,       ///< move by specifying linear and angular velocities
+      MoveModeNumOf       ///< number of move modes
     };
 
     /*!
@@ -277,12 +291,9 @@ namespace laelaps_control
     }
 
   protected:
+    // ROS
     ros::NodeHandle  &m_nh;       ///< the node handler bound to this instance
     double            m_hz;       ///< application nominal loop rate
-
-    // robot
-    double    m_maxRadiansPerSec; ///< max wheel-shaft radians/second
-    double    m_fGovernor;        ///< software velocity governor
 
     // ROS services, publishers, subscriptions.
     MapServices       m_services;       ///< laelaps teleop as server services
@@ -300,6 +311,14 @@ namespace laelaps_control
     int               m_nWdRobotTimeout;  ///< watchdog timeout
     bool              m_bHasFullComm;     ///< good full communications
     ButtonState       m_buttonState;      ///< saved button state
+
+    // working data
+    double    m_fMaxRadiansPerSec;///< max wheel-shaft radians/second
+    double    m_fGovernor;        ///< software velocity governor
+    MoveMode  m_eMoveMode;        ///< move mode
+    int       m_iLedPattern;      ///< current Xbox LED pattern
+    int       m_iLedTempPattern;  ///< temporary Xbox LED pattern
+    int       m_nLedTempCounter;  ///< temporary LED pattern counter
 
     // messages
     industrial_msgs::RobotStatus m_msgRobotStatus;
@@ -323,7 +342,7 @@ namespace laelaps_control
      *
      * \param pattern   LED pattern.
      */
-    void setLED(int pattern);
+    void setLed(int pattern);
 
     /*!
      * \brief Set Xbox360 left and right rumble motors client service request.
@@ -345,14 +364,7 @@ namespace laelaps_control
     void freeze();
 
     /*!
-     * \brief Increment/decrement robot's speed limiting governor.
-     *
-     * \param delta     \h_plusmn delta from current governor setting..
-     */
-    //void incrementGovernor(float delta);
-
-    /*!
-     * \brief Release (stop) the robot with no brake applied client service
+     * \brief Release (neutral) the robot with no brake applied client service
      * request.
      */
     void release();
@@ -380,6 +392,14 @@ namespace laelaps_control
     //..........................................................................
     // Topic Publishers
     //..........................................................................
+
+    /*!
+     * \brief Publish motor duty cycles command.
+     *
+     * \param dutyLeft    Duty cycle of left motors [-1.0, 1.0].
+     * \param dutyRight   Duty cycle of right motors [-1.0, 1.0].
+     */
+    void publishDutyCycles(double dutyLeft, double dutyRight);
 
     /*!
      * \brief Publish speed command.
@@ -505,6 +525,20 @@ namespace laelaps_control
     void buttonGovernorDown(ButtonState &buttonState);
 
     /*!
+     * \brief Execute software move mode up button action.
+     *
+     * \param buttonState   Button state array.
+     */
+    void buttonMoveModeDec(ButtonState &buttonState);
+
+    /*!
+     * \brief Execute software move mode down button action.
+     *
+     * \param buttonState   Button state array.
+     */
+    void buttonMoveModeInc(ButtonState &buttonState);
+
+    /*!
      * \brief Execute brake button action.
      *
      * \param buttonState   Button state array.
@@ -536,7 +570,40 @@ namespace laelaps_control
     /*!
      * \brief Drive Xbox360 LEDs into a figure 8 pattern.
      */
-    void driveLEDsFigure8Pattern();
+    void driveLedFigure8Pattern();
+
+    /*!
+     * \brief Drive Xbox360 temporary LED pattern.
+     *
+     * \param pattern   LED pattern.
+     */
+    void driveLedTempPattern();
+
+    /*!
+     * \brief Restore LED patteern given the current teleoperation state.
+     */
+    void restoreLedPattern();
+
+    /*!
+     * \brief Set Xbox360 LED pattern for the current governor setting.
+     */
+    void setLedGovernorPattern();
+
+    /*!
+     * \brief Set Xbox360 LED pattern for the current move mode.
+     */
+    void setLedMoveModePattern();
+
+    /*!
+     * \brief Set LED temporary pattern for the given seconds.
+     *
+     * The previous pattern is restored after timeout.
+     *
+     * \param pattern   LED temporary pattern.
+     * \param seconds   Seconds to keep patttern.
+     */
+    void setTempLed(int pattern, double seconds);
+
   };
 
 } // namespace laelaps_control

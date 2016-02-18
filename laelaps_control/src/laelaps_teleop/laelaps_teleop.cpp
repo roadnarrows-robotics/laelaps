@@ -90,6 +90,7 @@
 // ROS generated Laelaps messages.
 //
 #include "laelaps_control/ProductInfo.h"        // service
+#include "laelaps_control/DutyCycle.h"          // publish
 #include "laelaps_control/Velocity.h"           // publish
 
 //
@@ -155,18 +156,24 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
   m_nWdRobotTimeout = countsPerSecond(5.0);
   m_bHasFullComm    = false;
 
-  m_maxRadiansPerSec = (double)LaeMotorRatedMaxRpm / 60.0 * M_TAU;
-  m_fGovernor        = 1.0;
+  m_fMaxRadiansPerSec = (double)LaeMotorRatedMaxRpm / 60.0 * M_TAU;
+  m_fGovernor         = 1.0;
+  m_eMoveMode         = MoveModeVelocity;
+  m_iLedPattern       = LEDPatOff;
+  m_iLedTempPattern   = LEDPatOff;
+  m_nLedTempCounter   = 0;
 
   m_buttonState = map_list_of
-      (ButtonIdEStop,   0)
-      (ButtonIdGovUp,   0)
-      (ButtonIdGovDown, 0)
-      //(ButtonIdBrake,   0)
-      (ButtonIdPause,   0)
-      (ButtonIdStart,   0)
-      (ButtonIdMoveLin, 0)
-      (ButtonIdMoveAng, 0);
+      (ButtonIdEStop,       0)
+      (ButtonIdGovUp,       0)
+      (ButtonIdGovDown,     0)
+      (ButtonIdMoveModeDec, 0)
+      (ButtonIdMoveModeInc, 0)
+      //(ButtonIdBrake,     0)
+      (ButtonIdPause,       0)
+      (ButtonIdStart,       0)
+      (ButtonIdMoveLin,     0)
+      (ButtonIdMoveAng,     0);
 }
 
 LaelapsTeleop::~LaelapsTeleop()
@@ -218,7 +225,7 @@ void LaelapsTeleop::clientServices()
     m_nh.serviceClient<laelaps_control::SetRobotMode>(strSvc);
 }
 
-void LaelapsTeleop::setLED(int pattern)
+void LaelapsTeleop::setLed(int pattern)
 {
   hid::SetLED svc;
 
@@ -226,7 +233,8 @@ void LaelapsTeleop::setLED(int pattern)
 
   if( m_clientServices["/xbox_360/set_led"].call(svc) )
   {
-    ROS_DEBUG("Xbox360 LED set to pattern to %d", pattern);
+    m_iLedPattern = pattern;
+    ROS_DEBUG("Xbox360 LED set to pattern to %d", m_iLedPattern);
   }
   else
   {
@@ -332,6 +340,10 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
 {
   string  strPub;
 
+  strPub = "/laelaps_control/set_duty_cycles";
+  m_publishers[strPub] =
+    m_nh.advertise<laelaps_control::DutyCycle>(strPub, nQueueDepth);
+
   strPub = "/laelaps_control/set_velocities";
   m_publishers[strPub] =
     m_nh.advertise<laelaps_control::Velocity>(strPub, nQueueDepth);
@@ -341,20 +353,48 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
     m_nh.advertise<hid::RumbleCmd>(strPub, nQueueDepth);
 }
 
+void LaelapsTeleop::publishDutyCycles(double dutyLeft, double dutyRight)
+{
+  DutyCycle msg;
+
+  // stampHeader RDK
+
+  // left motors
+  msg.names.push_back(LaeKeyLeftFront);
+  msg.duties.push_back(dutyLeft);
+  msg.names.push_back(LaeKeyLeftRear);
+  msg.duties.push_back(dutyLeft);
+
+  // right motors
+  msg.names.push_back(LaeKeyRightFront);
+  msg.duties.push_back(dutyRight);
+  msg.names.push_back(LaeKeyRightRear);
+  msg.duties.push_back(dutyRight);
+
+  // publish
+  m_publishers["/laelaps_control/set_duty_cycles"].publish(msg);
+
+  // RDK
+  ROS_INFO("Duties = %4.1lf%%, %4.1lf%%.", dutyLeft, dutyRight);
+}
+
 void LaelapsTeleop::publishVelocities(double speedLeft, double speedRight)
 {
   double    fVelLeft, fVelRight;
   Velocity  msg;
 
-  fVelLeft  = speedLeft  * m_maxRadiansPerSec;
-  fVelRight = speedRight * m_maxRadiansPerSec;
+  fVelLeft  = speedLeft  * m_fMaxRadiansPerSec;
+  fVelRight = speedRight * m_fMaxRadiansPerSec;
 
   // stampHeader RDK
+
+  // left motors
   msg.names.push_back(LaeKeyLeftFront);
   msg.velocities.push_back(fVelLeft);
   msg.names.push_back(LaeKeyLeftRear);
   msg.velocities.push_back(fVelLeft);
 
+  // right motors
   msg.names.push_back(LaeKeyRightFront);
   msg.velocities.push_back(fVelRight);
   msg.names.push_back(LaeKeyRightRear);
@@ -486,9 +526,19 @@ void LaelapsTeleop::commCheck()
   m_bHasFullComm = hasComm;
 
   // not really a communication check function, but convenient.
-  if( m_eState == TeleopStatePaused )
+  switch( m_eState )
   {
-    driveLEDsFigure8Pattern();
+    case TeleopStatePaused:
+      driveLedFigure8Pattern();
+      break;
+    case TeleopStateReady:
+      if( m_nLedTempCounter > 0 )
+      {
+        driveLedTempPattern();
+      }
+      break;
+    default:
+      break;
   }
 }
 
@@ -502,7 +552,7 @@ void LaelapsTeleop::putRobotInSafeMode(bool bHard)
  
   m_eState = TeleopStateUninit;
 
-  setLED(LEDPatOn);
+  setLed(LEDPatOn);
 }
 
 
@@ -513,20 +563,19 @@ void LaelapsTeleop::putRobotInSafeMode(bool bHard)
 void LaelapsTeleop::msgToState(const hid::Controller360State &msg,
                             ButtonState                   &buttonState)
 {
-  buttonState[ButtonIdEStop]    = msg.b_button;
-  buttonState[ButtonIdGovUp]    = msg.dpad_up;
-  buttonState[ButtonIdGovDown]  = msg.dpad_down;
-  buttonState[ButtonIdPause]    = msg.back_button;
-  buttonState[ButtonIdStart]    = msg.start_button;
-  buttonState[ButtonIdMoveLin]  = msg.left_joy_y;
-  buttonState[ButtonIdMoveAng]  = msg.right_joy_x;
+  buttonState[ButtonIdEStop]        = msg.b_button;
+  buttonState[ButtonIdGovUp]        = msg.dpad_up;
+  buttonState[ButtonIdGovDown]      = msg.dpad_down;
+  buttonState[ButtonIdMoveModeDec]  = msg.dpad_left;
+  buttonState[ButtonIdMoveModeInc]  = msg.dpad_right;
+  buttonState[ButtonIdPause]        = msg.back_button;
+  buttonState[ButtonIdStart]        = msg.start_button;
+  buttonState[ButtonIdMoveLin]      = msg.left_joy_y;
+  buttonState[ButtonIdMoveAng]      = msg.right_joy_x;
 }
 
 void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
 {
-  // emergency stop
-  buttonEStop(buttonState);
-
   //
   // Teleoperation state.
   //
@@ -539,13 +588,24 @@ void LaelapsTeleop::execAllButtonActions(ButtonState &buttonState)
     buttonStart(buttonState);
   }
 
+  // now paused - return
+  if( m_eState == TeleopStatePaused )
+  {
+    return;
+  }
+
+  // emergency stop
+  buttonEStop(buttonState);
+
   //
-  // Moves.
+  // Process moves button actions.
   //
   if( canMove() )
   {
     buttonGovernorUp(buttonState);
     buttonGovernorDown(buttonState);
+    buttonMoveModeDec(buttonState);
+    buttonMoveModeInc(buttonState);
     buttonSpeed(buttonState);
     buttonBrake(buttonState);
   }
@@ -638,6 +698,8 @@ void LaelapsTeleop::buttonGovernorUp(ButtonState &buttonState)
     {
       m_fGovernor += 0.2;
     }
+
+    setLedGovernorPattern();
   }
 }
 
@@ -649,7 +711,41 @@ void LaelapsTeleop::buttonGovernorDown(ButtonState &buttonState)
     {
       m_fGovernor -= 0.2;
     }
+
+    setLedGovernorPattern();
   }
+}
+
+void LaelapsTeleop::buttonMoveModeDec(ButtonState &buttonState)
+{
+  int   i = (int)m_eMoveMode - 1;
+
+  if( i < 0 )
+  {
+    m_eMoveMode = (MoveMode)(MoveModeNumOf - 1);
+  }
+  else
+  {
+    m_eMoveMode = (MoveMode)i;
+  }
+
+  setLedMoveModePattern();
+}
+
+void LaelapsTeleop::buttonMoveModeInc(ButtonState &buttonState)
+{
+  int   i = (int)m_eMoveMode + 1;
+
+  if( i >= (int)MoveModeNumOf )
+  {
+    m_eMoveMode = (MoveMode)0;
+  }
+  else
+  {
+    m_eMoveMode = (MoveMode)i;
+  }
+
+  setLedMoveModePattern();
 }
 
 void LaelapsTeleop::buttonBrake(ButtonState &buttonState)
@@ -722,15 +818,16 @@ void LaelapsTeleop::buttonSpeed(ButtonState &buttonState)
   speedLeft  = fcap(speedLeft/div,  -1.0, 1.0);
   speedRight = fcap(speedRight/div, -1.0, 1.0);
 
-  // mix throttle x and y values
-  //speedLeft   = (joy_x + joy_y) / (double)XBOX360_JOY_MAX;
-  //speedRight  = (joy_y - joy_x) / (double)XBOX360_JOY_MAX;
-  
-  // cap
-  //speedLeft   = fcap(speedLeft, -1.0, 1.0);
-  //speedRight  = fcap(speedRight, -1.0, 1.0);
-
-  publishVelocities(speedLeft, speedRight);
+  switch( m_eMoveMode )
+  {
+    case MoveModeDutyCycle:
+      publishDutyCycles(speedLeft, speedRight);
+      break;
+    case MoveModeVelocity:
+    default:
+      publishVelocities(speedLeft, speedRight);
+      break;
+  }
 }
 
 
@@ -742,17 +839,36 @@ void LaelapsTeleop::pause()
 {
   m_eState = TeleopStatePaused;
 
-  setLED(LEDPatPaused);
+  setLed(LEDPatPaused);
 }
 
 void LaelapsTeleop::ready()
 {
   m_eState = TeleopStateReady;
 
-  setLED(LEDPatReady);
+  setLed(LEDPatReady);
 }
 
-void LaelapsTeleop::driveLEDsFigure8Pattern()
+void LaelapsTeleop::driveLedTempPattern()
+{
+  if( m_nLedTempCounter <= 0 )
+  {
+    return;
+  }
+  else
+  {
+    --m_nLedTempCounter;
+  }
+
+  if( m_nLedTempCounter <= 0 )
+  {
+    m_iLedTempPattern = LEDPatOff;
+    m_nLedTempCounter = 0;
+    restoreLedPattern();
+  }
+}
+
+void LaelapsTeleop::driveLedFigure8Pattern()
 {
   static int nLEDTimeout = -1;
   static int nLEDCounter = 0;
@@ -773,8 +889,71 @@ void LaelapsTeleop::driveLEDsFigure8Pattern()
   if( nLEDCounter++ >= nLEDTimeout )
   {
     iLED = (iLED + 1) % arraysize(LEDPat);
-    setLED(LEDPat[iLED]);
+    setLed(LEDPat[iLED]);
     nLEDCounter = 0;
   }
 }
 
+void LaelapsTeleop::restoreLedPattern()
+{
+  switch( m_eState )
+  {
+    case TeleopStatePaused:
+      setLed(LEDPatPaused);
+      break;
+    case TeleopStateReady:
+      setLed(LEDPatReady);
+      break;
+    case TeleopStateUninit:
+    default:
+      setLed(LEDPatOn);
+      break;
+  }
+}
+
+void LaelapsTeleop::setLedGovernorPattern()
+{
+  int pattern;
+
+  if( m_fGovernor <= 0.20 )
+  {
+    pattern = XBOX360_LED_PAT_1_ON;
+  }
+  else if( m_fGovernor <= 0.40 )
+  {
+    pattern = XBOX360_LED_PAT_2_ON;
+  }
+  else if( m_fGovernor <= 0.60 )
+  {
+    pattern = XBOX360_LED_PAT_3_ON;
+  }
+  else if( m_fGovernor <= 0.80 )
+  {
+    pattern = XBOX360_LED_PAT_4_ON;
+  }
+  else
+  {
+    pattern = XBOX360_LED_PAT_4_BLINK;
+  }
+
+  setTempLed(pattern, 0.25);
+}
+
+void LaelapsTeleop::setLedMoveModePattern()
+{
+  int pattern;
+  int i = (int)m_eMoveMode;
+
+  pattern = XBOX360_LED_PAT_1_ON + i;
+
+  setTempLed(pattern, 0.25);
+}
+
+
+void LaelapsTeleop::setTempLed(int pattern, double seconds)
+{
+  m_iLedTempPattern   = pattern;
+  m_nLedTempCounter   = countsPerSecond(seconds);
+
+  setLed(m_iLedTempPattern);
+}

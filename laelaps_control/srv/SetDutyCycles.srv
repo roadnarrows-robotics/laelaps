@@ -1,0 +1,8 @@
+### Laelaps laelaps_control/SetDutyCycle service
+#
+# Set robot's motor duty cycles.
+#
+
+DutyCycle  goal    # goal duty cycles
+---
+DutyCycle  actual  # actual achievable

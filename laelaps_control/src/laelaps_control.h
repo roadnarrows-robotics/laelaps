@@ -91,6 +91,7 @@
 #include "laelaps_control/AuxPwr.h"
 #include "laelaps_control/Caps.h"
 #include "laelaps_control/Dimensions.h"
+#include "laelaps_control/DutyCycle.h"
 #include "laelaps_control/Dynamics.h"
 #include "laelaps_control/Gpio.h"
 #include "laelaps_control/IlluminanceState.h"
@@ -128,6 +129,7 @@
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
 #include "laelaps_control/SetAuxPwr.h"
+#include "laelaps_control/SetDutyCycles.h"
 #include "laelaps_control/SetRobotMode.h"
 #include "laelaps_control/SetVelocities.h"
 #include "laelaps_control/Stop.h"
@@ -519,6 +521,17 @@ namespace laelaps_control
                      laelaps_control::SetAuxPwr::Response &rsp);
 
     /*!
+     * \brief Set motor duty cycles service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool setDutyCycles(SetDutyCycles::Request  &req,
+                       SetDutyCycles::Response &rsp);
+
+    /*!
      * \brief Set robot's manual/auto mode service callback.
      *
      * \param req   Service request.
@@ -586,6 +599,13 @@ namespace laelaps_control
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     // Subscribed Topic Callbacks
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Execute set duyt cycles subscibed topic callback.
+     *
+     * \param msgDuty  Duty cycle message.
+     */
+    void execSetDutyCycles(const laelaps_control::DutyCycle &msgDuty);
 
     /*!
      * \brief Execute set velocities subscibed topic callback.

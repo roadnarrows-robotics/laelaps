@@ -33,6 +33,7 @@ add_message_files(
     AuxPwr.msg
     Caps.msg
     Dimensions.msg
+    DutyCycle.msg
     Dynamics.msg
     Gpio.msg
     IlluminanceState.msg
@@ -71,6 +72,7 @@ add_service_files(
     ReloadConfig.srv
     ResetEStop.srv
     SetAuxPwr.srv
+    SetDutyCycles.srv
     SetRobotMode.srv
     SetVelocities.srv
     Stop.srv
