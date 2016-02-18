@@ -699,6 +699,8 @@ void LaelapsTeleop::buttonGovernorUp(ButtonState &buttonState)
       m_fGovernor += 0.2;
     }
 
+    //fprintf(stderr, "DBG: up: gov=%lf\n", m_fGovernor);
+
     setLedGovernorPattern();
   }
 }
@@ -712,40 +714,52 @@ void LaelapsTeleop::buttonGovernorDown(ButtonState &buttonState)
       m_fGovernor -= 0.2;
     }
 
+    //fprintf(stderr, "DBG: dn: gov=%lf\n", m_fGovernor);
+
     setLedGovernorPattern();
   }
 }
 
 void LaelapsTeleop::buttonMoveModeDec(ButtonState &buttonState)
 {
-  int   i = (int)m_eMoveMode - 1;
-
-  if( i < 0 )
+  if( buttonOffToOn(ButtonIdMoveModeDec, buttonState) )
   {
-    m_eMoveMode = (MoveMode)(MoveModeNumOf - 1);
-  }
-  else
-  {
-    m_eMoveMode = (MoveMode)i;
-  }
+    int   i = (int)m_eMoveMode - 1;
 
-  setLedMoveModePattern();
+    if( i < 0 )
+    {
+      m_eMoveMode = (MoveMode)(MoveModeNumOf - 1);
+    }
+    else
+    {
+      m_eMoveMode = (MoveMode)i;
+    }
+
+    //fprintf(stderr, "DBG: dec: movemode=%d\n", m_eMoveMode);
+
+    setLedMoveModePattern();
+  }
 }
 
 void LaelapsTeleop::buttonMoveModeInc(ButtonState &buttonState)
 {
-  int   i = (int)m_eMoveMode + 1;
-
-  if( i >= (int)MoveModeNumOf )
+  if( buttonOffToOn(ButtonIdMoveModeInc, buttonState) )
   {
-    m_eMoveMode = (MoveMode)0;
-  }
-  else
-  {
-    m_eMoveMode = (MoveMode)i;
-  }
+    int   i = (int)m_eMoveMode + 1;
 
-  setLedMoveModePattern();
+    if( i >= (int)MoveModeNumOf )
+    {
+      m_eMoveMode = (MoveMode)0;
+    }
+    else
+    {
+      m_eMoveMode = (MoveMode)i;
+    }
+
+    //fprintf(stderr, "DBG: inc: movemode=%d\n", m_eMoveMode);
+
+    setLedMoveModePattern();
+  }
 }
 
 void LaelapsTeleop::buttonBrake(ButtonState &buttonState)
@@ -915,28 +929,30 @@ void LaelapsTeleop::setLedGovernorPattern()
 {
   int pattern;
 
-  if( m_fGovernor <= 0.20 )
+  if( m_fGovernor <= 0.21 )
   {
     pattern = XBOX360_LED_PAT_1_ON;
   }
-  else if( m_fGovernor <= 0.40 )
+  else if( m_fGovernor <= 0.41 )
   {
     pattern = XBOX360_LED_PAT_2_ON;
   }
-  else if( m_fGovernor <= 0.60 )
+  else if( m_fGovernor <= 0.61 )
   {
     pattern = XBOX360_LED_PAT_3_ON;
   }
-  else if( m_fGovernor <= 0.80 )
+  else if( m_fGovernor <= 0.81 )
   {
     pattern = XBOX360_LED_PAT_4_ON;
   }
   else
   {
-    pattern = XBOX360_LED_PAT_4_BLINK;
+    pattern = XBOX360_LED_PAT_ALL_SPIN_2;
   }
 
-  setTempLed(pattern, 0.25);
+  //fprintf(stderr, "DBG: gov: led=%d\n", pattern);
+
+  setTempLed(pattern, 1.0);
 }
 
 void LaelapsTeleop::setLedMoveModePattern()
@@ -946,7 +962,7 @@ void LaelapsTeleop::setLedMoveModePattern()
 
   pattern = XBOX360_LED_PAT_1_ON + i;
 
-  setTempLed(pattern, 0.25);
+  setTempLed(pattern, 1.0);
 }
 
 
@@ -954,6 +970,8 @@ void LaelapsTeleop::setTempLed(int pattern, double seconds)
 {
   m_iLedTempPattern   = pattern;
   m_nLedTempCounter   = countsPerSecond(seconds);
+
+  //fprintf(stderr, "DBG: movemode: led=%d\n", pattern);
 
   setLed(m_iLedTempPattern);
 }
