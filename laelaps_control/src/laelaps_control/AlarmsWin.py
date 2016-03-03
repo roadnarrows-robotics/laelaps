@@ -13,7 +13,7 @@
 ## $LastChangedDate: 2012-12-06 16:33:18 -0700 (Thu, 06 Dec 2012) $
 ## $Rev: 330 $
 ##
-## \brief Laelaps alarms sub-panel.
+## \brief Laelaps alarms panel.
 ##
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
@@ -73,7 +73,10 @@ fgColors = {
   'error':    '#cc0000'
 }
 
-alarmState = {'none':0, 'warning':1, 'alarm':2, 'critical':3}
+## \brief Alarm severity keys.
+alarmSeverity = ['none', 'warning', 'alarm', 'critical']
+
+## \brief Alarm severity to indicator color map.
 alarmColor = {
   'none':'gray', 'warning':'yellow', 'alarm':'red', 'critical':'red'
 }
@@ -148,8 +151,8 @@ class AlarmsWin(Toplevel):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createWidgets(self):
-    self.createSysAlarmPanel(self, 0)
-    self.createMotorCtlrAlarmPanel(self, 1)
+    self.createSysAlarmPanel(self, 0, 0)
+    self.createAllMotorCtlrAlarmPanel(self, 1, 0)
 
     # close button
     w = Button(self, width=10, text='Close',
@@ -159,25 +162,29 @@ class AlarmsWin(Toplevel):
 
   #
   ## \brief Create system alarms panel.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
   #
-  def createSysAlarmPanel(self, parent, row):
+  def createSysAlarmPanel(self, parent, row, col):
     wframe = LabelFrame(parent, text='System Alarms')
     wframe['font'] =('Helvetica', 12)
     wframe['fg'] = fgColors['focus']
     wframe['borderwidth'] = 2
     wframe['relief'] = 'ridge'
-    wframe.grid(row=row, column=0, padx=3, pady=3, sticky=N+W+E)
+    wframe.grid(row=row, column=col, padx=3, pady=3, sticky=N+W+E)
 
-    key = 'system'
-    self.m_alarms[key] = {}
+    subsys = 'system'
+    self.m_alarms[subsys] = {}
 
     row = 0
     col = 0
 
     w = Indicator(wframe, gauge_label='Battery')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['battery'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['battery'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -186,8 +193,8 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Temp')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['temperature'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['temperature'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -196,8 +203,8 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='EStop')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['estop'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['estop'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -206,46 +213,57 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Critical')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['critical'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['critical'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
 
   #
-  ## \brief Create motor controller alarms panel.
+  ## \brief Create all motor controller and motor alarms panels.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
   #
-  def createMotorCtlrAlarmPanel(self, parent, row):
+  def createAllMotorCtlrAlarmPanel(self, parent, row, col):
     wframe = Frame(parent)
     wframe['relief'] = 'flat'
-    wframe.grid(row=row, column=0, padx=3, pady=3, sticky=N+W+E)
+    wframe.grid(row=row, column=col, padx=3, pady=3, sticky=N+W+E)
 
     row = 0
+    col = 0
+
     for motorctlr in ['front', 'rear']:
-      self.createMotorCtlrAlarmSubPanel(wframe, motorctlr, row)
+      self.createMotorCtlrAlarmPanel(wframe, motorctlr, row, col)
       row += 1
 
   #
-  ## \brief Create specific motor controller alarms subpanel.
+  ## \brief Create specific motor controller and motor alarms panels.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param subsys    Alarm subsystem key.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
   #
-  def createMotorCtlrAlarmSubPanel(self, parent, key, row):
-    title = key.capitalize() + " Motor Controller Alarms"
+  def createMotorCtlrAlarmPanel(self, parent, subsys, row, col):
+    title = subsys.capitalize() + " Motor Controller Alarms"
     wframe = LabelFrame(parent, text=title)
     wframe['font'] =('Helvetica', 12)
     wframe['fg'] = fgColors['focus']
     wframe['borderwidth'] = 2
     wframe['relief'] = 'ridge'
-    wframe.grid(row=row, column=0, padx=1, pady=3, sticky=N+W+E)
+    wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+W+E)
 
-    self.m_alarms[key] = {}
+    self.m_alarms[subsys] = {}
 
     row = 0
     col = 0
 
     w = Indicator(wframe, gauge_label='Battery\nHigh')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['batt_high'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['batt_high'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -254,8 +272,8 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Battery\nLow')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['batt_low'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['batt_low'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -264,8 +282,8 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Logic\nHigh')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['logic_high'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['logic_high'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -274,8 +292,8 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Logic\nLow')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['logic_low'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['logic_low'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -284,24 +302,31 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Temp')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['temperature'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['temperature'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
 
-    row += 1
-    col += 1
+    colspan = col + 1
+    row    += 1
+    col     = 0
 
-    self.createMotorAlarmPanel(wframe, row, col, key)
+    self.createCtlrMotorAlarmPanels(wframe, subsys, row, col, colspan)
 
   #
-  ## \brief Create motor alarms panel.
+  ## \brief Create motor controller's motor alarms panels.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param ctlr      Motor controller subsystem.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
+  ## \param colspan   Column span.
   #
-  def createMotorAlarmPanel(self, parent, row, colspan, ctlr):
+  def createCtlrMotorAlarmPanels(self, parent, ctlr, row, col, colspan):
     wframe = Frame(parent)
     wframe['relief'] = 'flat'
-    wframe.grid(row=row, column=0, columnspan=colspan, 
+    wframe.grid(row=row, column=col, columnspan=colspan, 
         padx=1, pady=3, sticky=N+W+E)
 
     if ctlr == 'front':
@@ -309,17 +334,24 @@ class AlarmsWin(Toplevel):
     else:
       motorList = ['left_rear', 'right_rear']
 
+    row = 0
     col = 0
 
-    for key in motorList:
-      self.createMotorAlarmSubPanel(wframe, key, ctlr, row, col)
+    for subsys in motorList:
+      self.createMotorAlarmPanel(wframe, ctlr, subsys, row, col)
       col += 1
 
   #
-  ## \brief Create specific motor alarms subpanel.
+  ## \brief Create specific motor alarms panel.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param ctlr      Motor controller subsystem.
+  ## \param subsys    Motor subsystem.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
   #
-  def createMotorAlarmSubPanel(self, parent, key, ctlr, row, col):
-    title = key.replace("_"+ctlr, " ")
+  def createMotorAlarmPanel(self, parent, ctlr, subsys, row, col):
+    title = subsys.replace("_"+ctlr, " ")
     title = title.capitalize() + " Motor"
     wframe = LabelFrame(parent, text=title)
     wframe['font'] =('Helvetica', 10)
@@ -328,15 +360,15 @@ class AlarmsWin(Toplevel):
     wframe['relief'] = 'ridge'
     wframe.grid(row=row, column=col, padx=10, pady=3, sticky=N+W+E)
 
-    self.m_alarms[key] = {}
+    self.m_alarms[subsys] = {}
 
     row = 0
     col = 0
 
     w = Indicator(wframe, gauge_label='Fault')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['fault'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['fault'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
@@ -345,14 +377,173 @@ class AlarmsWin(Toplevel):
 
     w = Indicator(wframe, gauge_label='Over\nCurrent')
     w.grid(row=row, column=col)
-    self.m_alarms[key]['over_current'] = {
-        'val':      alarmState['none'],
+    self.m_alarms[subsys]['over_current'] = {
+        'val':      'none',
         'var':      None,
         'widget':   w,
         'type':     'indicator'}
 
+  #
+  ## \brief Update all alarms from received status message.
+  ##
+  ## \param status    Robot extended status message.     
+  #
   def updateAlarms(self, status):
+    self.updateSysAlarms(status)
+    self.updateAllMotorCtlrAlarmPanels(status)
+    self.updateAllMotorAlarmPanels(status)
 
+  #
+  ## \brief Update system alarms from received status message.
+  ##
+  ## \param status    Robot extended status message.     
+  #
+  def updateSysAlarms(self, status):
+    subsys = 'system'
+
+    alarm = 'battery'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_BATT,
+                                               Alarms.WARN_BATT)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'temperature'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_TEMP,
+                                               Alarms.WARN_TEMP)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'estop'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_ESTOP,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'critical'
+    if status.alarms.is_critical:
+      severity = 'critical'
+    else:
+      severity = 'none'
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+  #
+  ## \brief Update all motor controller alarms from received status message.
+  ##
+  ## \param status    Robot extended status message.     
+  #
+  def updateAllMotorCtlrAlarmPanels(self, status):
+    for health in status.motor_ctlr_health:
+      self.updateMotorCtlrAlarmPanel(health)
+
+  #
+  ## \brief Update specific motor controller alarms.
+  ##
+  ## \param health    Motor controller health status.
+  #
+  def updateMotorCtlrAlarmPanel(self, health):
+    subsys = health.name
+
+    if not self.m_alarms.has_key(subsys):
+      return
+
+    alarm = 'batt_high'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_MOTCTLR_BATT_V_HIGH,
+                                               Alarms.WARN_MOTCTLR_BATT_V_HIGH)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'batt_low'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_MOTCTLR_BATT_V_LOW,
+                                               Alarms.WARN_MOTCTLR_BATT_V_LOW)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'logic_high'
+    severity = self.getSeverity(health.alarms,
+                                            Alarms.ALARM_MOTCTLR_LOGIC_V_HIGH,
+                                            Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'logic_low'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_MOTCTLR_LOGIC_V_LOW,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'temperature'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_TEMP,
+                                               Alarms.WARN_TEMP)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+  #
+  ## \brief Update all motor alarms from received status message.
+  ##
+  ## \param status    Robot extended status message.     
+  #
+  def updateAllMotorAlarmPanels(self, status):
+    for health in status.motor_health:
+      self.updateMotorAlarmPanel(health)
+
+  #
+  ## \brief Create specific motor alarms subpanel.
+  ##
+  ## \param health    Motor health status.
+  #
+  def updateMotorAlarmPanel(self, health):
+    subsys = health.name
+
+    if not self.m_alarms.has_key(subsys):
+      return
+
+    alarm = 'fault'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_MOT_FAULT,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'over_current'
+    severity = self.getSeverity(health.alarms, Alarms.ALARM_MOT_OVER_CUR,
+                                               Alarms.WARN_MOT_OVER_CUR)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+  #
+  ## \brief Determine severity of alarm.
+  ##
+  ## \param alarms      Alarms.
+  ## \param alarmBit    Alarm bit.
+  ## \param warnBit     Warning bit.
+  ##
+  ## \return Severity key.
+  #
+  def getSeverity(self, alarms, alarmBit, warnBit):
+    if alarms.alarms & alarmBit:
+      severity = 'alarm'
+    elif alarms.warnings & warnBit:
+      severity = 'warning'
+    else:
+      severity = 'none'
+    return severity
+
+  #
+  ## \brief On delete callback.
+  ##
+  ## \param w   Widget (not used).
+  #
   def onDeleteChild(self, w):
     self.m_isCreated = False
     self.destroy()

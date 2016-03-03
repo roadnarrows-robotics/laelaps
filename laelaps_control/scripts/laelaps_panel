@@ -367,7 +367,7 @@ class window(Frame):
         'type':     'dial'}
   
     w = Dial(wframe,
-        gauge_val_min=0.0, gauge_val_max=10.0, gauge_val_home=0,
+        gauge_val_min=0.0, gauge_val_max=4.5, gauge_val_home=0,
         gauge_size=150, gauge_res=0.5, gauge_label="m/s",
         gauge_show_val=True, gauge_moving_win=4,
         gauge_dial_image="GaugeDialGreenRed.png",
@@ -576,13 +576,6 @@ class window(Frame):
     self.m_icons['estop_reset'] = \
         self.m_imageLoader.loadImage("icons/icon_estop_reset.png")
 
-    # freeze
-    row += 1
-    w = self.createButton(wframe, "Park",
-                                  "icons/icon_stop.png", self.cbFreeze)
-    w.grid(row=row, column=0, sticky=N+E+W)
-    self.m_keysNoMoves.append('park')
-
     # release
     row += 1
     w = self.createButton(wframe, "Neutral",
@@ -590,12 +583,11 @@ class window(Frame):
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('neutral')
 
-    # clear alarms
-    #row += 1
-    #w = self.createButton(wframe, "Clear\nAlarms",
-    #                              "icons/icon_alarm.png", self.clearAlarms)
-    #w.grid(row=3, column=0, sticky=N+E+W)
-    #self.m_keysNoMoves.append('clear_alarms')
+    # alarms
+    row += 1
+    w = self.createButton(wframe, "Alarms",
+                                  "icons/icon_alarm.png", self.cbAlarms)
+    w.grid(row=row, column=0, sticky=N+E+W)
 
     # settings
     row += 1
@@ -795,17 +787,6 @@ class window(Frame):
   ## \brief Park laelaps button callback.
   #
   def cbFreeze(self):
-    # RDK
-    if self.m_alarmsWin is None:
-      self.m_alarmsWin = AlarmsWin(self)
-    elif not self.m_alarmsWin.m_isCreated:
-      del self.m_alarmsWin
-      self.m_alarmsWin = AlarmsWin(self)
-    else:
-      self.m_alarmsWin.lift()
-      
-    return
-    # RDK
     try:
       rospy.wait_for_service("laelaps_control/freeze", timeout=1)
     except rospy.ROSException, e:
@@ -835,6 +816,18 @@ class window(Frame):
       self.showError("Release request failed: %s." % (e.message))
       return
     self.showInfo("Motors released.")
+
+  #
+  ## \brief Show alarms panel.
+  #
+  def cbAlarms(self):
+    if self.m_alarmsWin is None:
+      self.m_alarmsWin = AlarmsWin(self)
+    elif not self.m_alarmsWin.m_isCreated:
+      del self.m_alarmsWin
+      self.m_alarmsWin = AlarmsWin(self)
+    else:
+      self.m_alarmsWin.lift()
 
   #
   ## \brief Show estop button.
