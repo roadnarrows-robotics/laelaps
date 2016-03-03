@@ -64,6 +64,7 @@ from laelaps_control.PanelConfig import *
 from laelaps_control.Gauge import *
 from laelaps_control.AboutDlg import AboutDlg
 from laelaps_control.WarnDlg import WarnDlg
+from laelaps_control.AlarmsWin import AlarmsWin
 
 
 # ------------------------------------------------------------------------------
@@ -71,21 +72,13 @@ from laelaps_control.WarnDlg import WarnDlg
 # ------------------------------------------------------------------------------
 
 ## \brief Application version. Update as needed. 
-appVersion = '1.1.0'
+appVersion = '1.2.0'
 
 ## \brief Additional image search paths.
 imagePath = [
   "/prj/share/appkit/images",
   "/usr/local/share/appkit/images"
 ]
-
-## \brief Alarm strings.
-##alarmStrings = {
-##  MotorHealth.ALARM_NONE:         "ok",
-##  MotorHealth.ALARM_VOLTAGE:      "V",
-##  MotorHealth.ALARM_TEMP:         "T",
-##  MotorHealth.ALARM_COMM:         "comm",
-##}
 
 ## \brief Common foreground colors.
 fgColors = {
@@ -95,9 +88,6 @@ fgColors = {
   'warning':  '#aa6600',
   'error':    '#cc0000'
 }
-
-# See RS160DControl.h
-RS160D_MOTOR_SPEED_MAX = 249.0
 
 
 # ------------------------------------------------------------------------------
@@ -158,9 +148,7 @@ class window(Frame):
     self.m_keysNoMoves    = []    # gui button keys depending on robot mode
     self.m_robotState     = {}    # robot state widgets, variables, and values
     self.m_subsysState    = {}    # subsystems state widgets, variables, values
-
-    self.m_robotStatus    = {}    # robot status widgets, variables, and values
-    self.m_powertrain     = {}    # powertrain state widgets, variables, etc.
+    self.m_alarmsWin      = None  # alarms sub-panel
 
     if kw.has_key('config'):
       self.m_config = kw['config']
@@ -807,6 +795,17 @@ class window(Frame):
   ## \brief Park laelaps button callback.
   #
   def cbFreeze(self):
+    # RDK
+    if self.m_alarmsWin is None:
+      self.m_alarmsWin = AlarmsWin(self)
+    elif not self.m_alarmsWin.m_isCreated:
+      del self.m_alarmsWin
+      self.m_alarmsWin = AlarmsWin(self)
+    else:
+      self.m_alarmsWin.lift()
+      
+    return
+    # RDK
     try:
       rospy.wait_for_service("laelaps_control/freeze", timeout=1)
     except rospy.ROSException, e:
