@@ -181,6 +181,16 @@ class AlarmsWin(Toplevel):
     row = 0
     col = 0
 
+    w = Indicator(wframe, gauge_label='General')
+    w.grid(row=row, column=col)
+    self.m_alarms[subsys]['general'] = {
+        'val':      'none',
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+
+    col += 1
+
     w = Indicator(wframe, gauge_label='Battery')
     w.grid(row=row, column=col)
     self.m_alarms[subsys]['battery'] = {
@@ -400,6 +410,13 @@ class AlarmsWin(Toplevel):
   #
   def updateSysAlarms(self, status):
     subsys = 'system'
+
+    alarm = 'general'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_GEN,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
 
     alarm = 'battery'
     severity = self.getSeverity(status.alarms, Alarms.ALARM_BATT,
