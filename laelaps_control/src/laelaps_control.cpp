@@ -122,6 +122,7 @@
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
+#include "laelaps_control/GetIlluminance.h"
 #include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetImuAlt.h"
 #include "laelaps_control/GetProductInfo.h"
@@ -129,7 +130,6 @@
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
-#include "laelaps_control/ReadIlluminance.h"
 #include "laelaps_control/Release.h"
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
@@ -248,6 +248,11 @@ void LaelapsControl::advertiseServices()
                                           &(*this));
 #endif // FUTURE
 
+  strSvc = "get_illuminance";
+  m_services[strSvc] = m_nh.advertiseService(strSvc,
+                                          &LaelapsControl::getIlluminance,
+                                          &(*this));
+
 #if 0 // FUTURE
   strSvc = "get_imu";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
@@ -283,11 +288,6 @@ void LaelapsControl::advertiseServices()
   strSvc = "read_gpio";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::readGpio,
-                                          &(*this));
-
-  strSvc = "read_illuminance";
-  m_services[strSvc] = m_nh.advertiseService(strSvc,
-                                          &LaelapsControl::readIlluminance,
                                           &(*this));
 
   strSvc = "release";
@@ -426,8 +426,8 @@ bool LaelapsControl::getCaps(GetCaps::Request  &req,
 }
 
 
-bool LaelapsControl::readIlluminance(ReadIlluminance::Request  &req,
-                                     ReadIlluminance::Response &rsp)
+bool LaelapsControl::getIlluminance(GetIlluminance::Request  &req,
+                                    GetIlluminance::Response &rsp)
 {
   const char *svc = "get_illuminance";
 
@@ -436,7 +436,7 @@ bool LaelapsControl::readIlluminance(ReadIlluminance::Request  &req,
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  rc = m_robot.readAmbientLight(req.name, fIlluminance);
+  rc = m_robot.getAmbientLight(req.name, fIlluminance);
  
   if( rc == LAE_OK )
   {
@@ -882,11 +882,9 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
   m_publishers[strPub] =
     m_nh.advertise<Dynamics>(strPub, nQueueDepth);
 
-#if 0 // FUTURE
   strPub = "illuminance_state";
   m_publishers[strPub] =
     m_nh.advertise<IlluminanceState>(strPub, nQueueDepth);
-#endif // FUTURE
 
   strPub = "imu_state_alt";
   m_publishers[strPub] =
@@ -956,6 +954,10 @@ void LaelapsControl::publishRobotStatus()
 
 void LaelapsControl::publishSensorStates()
 {
+  updateIlluminanceStateMsg(m_msgIlluminanceState);
+
+  m_publishers["illuminance_state"].publish(m_msgIlluminanceState);
+
   updateImuAltMsg(m_msgImuAlt);
 
   m_publishers["imu_state_alt"].publish(m_msgImuAlt);
@@ -1107,6 +1109,26 @@ void LaelapsControl::updateExtendedRobotStatusMsg(LaeRptRobotStatus &status,
     health.alarms.warnings    = h.m_alarms.m_uWarnings;
 
     msg.motor_health.push_back(health);
+  }
+}
+
+void LaelapsControl::updateIlluminanceStateMsg(IlluminanceState &msg)
+{
+  vector<string>  names;
+  vector<double>  lux;
+  int             rc;
+
+  rc = m_robot.getAmbientLight(names, lux);
+
+  if( rc == LAE_OK )
+  {
+    stampHeader(msg.header, msg.header.seq+1);
+
+    for(size_t i = 0; i < names.size(); ++i )
+    {
+      msg.name.push_back(names[i]);
+      msg.illuminance.push_back(lux[i]);
+    }
   }
 }
 

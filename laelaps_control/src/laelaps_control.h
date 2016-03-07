@@ -117,6 +117,7 @@
 #include "laelaps_control/EStop.h"
 #include "laelaps_control/Freeze.h"
 #include "laelaps_control/GetCaps.h"
+#include "laelaps_control/GetIlluminance.h"
 #include "laelaps_control/GetImu.h"
 #include "laelaps_control/GetImuAlt.h"
 #include "laelaps_control/GetProductInfo.h"
@@ -124,7 +125,6 @@
 #include "laelaps_control/IsAlarmed.h"
 #include "laelaps_control/IsDescLoaded.h"
 #include "laelaps_control/ReadGpio.h"
-#include "laelaps_control/ReadIlluminance.h"
 #include "laelaps_control/Release.h"
 #include "laelaps_control/ReloadConfig.h"
 #include "laelaps_control/ResetEStop.h"
@@ -300,6 +300,13 @@ namespace laelaps_control
                                       RobotStatusExtended        &msg);
 
     /*!
+     * \brief Update illuminance sensors state message from current values.
+     *
+     * \param [out] msg   Illuminance state message.
+     */
+    void updateIlluminanceStateMsg(IlluminanceState &msg);
+
+    /*!
      * \brief Update IMU alternative message from current IMU values.
      *
      * \param [out] msg   IMU alternative message.
@@ -393,8 +400,8 @@ namespace laelaps_control
      *
      * \return Returns true on success, false on failure.
      */
-    bool readIlluminance(laelaps_control::ReadIlluminance::Request  &req,
-                         laelaps_control::ReadIlluminance::Response &rsp);
+    bool getIlluminance(laelaps_control::GetIlluminance::Request  &req,
+                        laelaps_control::GetIlluminance::Response &rsp);
 
     /*!
      * \brief Get inertia measurement unit's latest sensed data service

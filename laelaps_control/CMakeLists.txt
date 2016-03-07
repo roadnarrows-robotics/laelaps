@@ -60,6 +60,7 @@ add_service_files(
     EStop.srv
     Freeze.srv
     GetCaps.srv
+    GetIlluminance.srv
     GetImu.srv
     GetImuAlt.srv
     GetProductInfo.srv
@@ -67,7 +68,6 @@ add_service_files(
     IsAlarmed.srv
     IsDescLoaded.srv
     ReadGpio.srv
-    ReadIlluminance.srv
     Release.srv
     ReloadConfig.srv
     ResetEStop.srv
