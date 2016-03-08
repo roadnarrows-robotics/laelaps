@@ -1118,6 +1118,9 @@ void LaelapsControl::updateIlluminanceStateMsg(IlluminanceState &msg)
   vector<double>  lux;
   int             rc;
 
+  msg.name.clear();
+  msg.illuminance.clear();
+
   rc = m_robot.getAmbientLight(names, lux);
 
   if( rc == LAE_OK )
@@ -1159,6 +1162,9 @@ void LaelapsControl::updateRangeStateMsg(RangeState &msg)
   vector<string>  names;
   vector<double>  ranges;
   int             rc;
+
+  msg.name.clear();
+  msg.range.clear();
 
   rc = m_robot.getRange(names, ranges);
 
