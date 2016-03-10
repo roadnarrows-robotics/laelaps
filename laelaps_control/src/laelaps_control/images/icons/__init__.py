@@ -16,5 +16,6 @@ __all__ = [
   'icon_led_green_16.png',
   'icon_led_red_16.png',
   'icon_led_yellow_16.png',
+  'icon_pause.png',
   'icon_settings.png',
 ]
