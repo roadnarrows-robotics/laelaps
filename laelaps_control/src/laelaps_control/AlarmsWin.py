@@ -179,8 +179,9 @@ class AlarmsWin(Toplevel):
 
     self.m_icons['app_icon'] = \
                   self.m_imageLoader.loadImage("icons/LaelapsAlarmsWinIcon.png")
-    self.master.tk.call('wm', 'iconphoto', self.master._w,
-        self.m_icons['app_icon'])
+    if self.m_icons['app_icon'] is not None:
+      self.master.tk.call('wm', 'iconphoto', self.master._w,
+          self.m_icons['app_icon'])
 
 
   #
