@@ -114,9 +114,10 @@ class AlarmsWin(Toplevel):
     self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDeleteChild(self))
 
     # subscribe to extended robot status data
-    rospy.Subscriber("laelaps_control/robot_status_ex", 
+    self.m_sub = rospy.Subscriber("laelaps_control/robot_status_ex", 
                      RobotStatusExtended, 
-                     self.updateAlarms) 
+                     callback=self.updateAlarms) 
+
     self.lift()
 
   #
@@ -151,14 +152,36 @@ class AlarmsWin(Toplevel):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createWidgets(self):
-    self.createSysAlarmPanel(self, 0, 0)
-    self.createAllMotorCtlrAlarmPanel(self, 1, 0)
+    self.createHeading(self, 0, 0)
+    self.createSysAlarmPanel(self, 1, 0)
+    self.createAllMotorCtlrAlarmPanel(self, 2, 0)
 
     # close button
     w = Button(self, width=10, text='Close',
         command=lambda: self.onDeleteChild(self), anchor=CENTER)
-    w.grid(row=2, column=0, sticky=N, pady=5)
+    w.grid(row=3, column=0, sticky=N, pady=5)
     self.m_bttnClose = w
+
+  #
+  ## \brief Create top gui heading.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
+  #
+  def createHeading(self, parent, row, col):
+    # top heading
+    w = Label(parent)
+    w['font']   = ('Helvetica', 16)
+    w['text']   = 'Laelaps Alarm Panel'
+    w['anchor'] = CENTER
+    w.grid(row=row, column=col, sticky=E+W)
+
+    self.m_icons['app_icon'] = \
+                  self.m_imageLoader.loadImage("icons/LaelapsAlarmsWinIcon.png")
+    self.master.tk.call('wm', 'iconphoto', self.master._w,
+        self.m_icons['app_icon'])
+
 
   #
   ## \brief Create system alarms panel.
@@ -177,6 +200,8 @@ class AlarmsWin(Toplevel):
 
     subsys = 'system'
     self.m_alarms[subsys] = {}
+    self.m_alarms[subsys]['alarm_bits']   = 0x0
+    self.m_alarms[subsys]['warning_bits'] = 0x0
 
     row = 0
     col = 0
@@ -266,6 +291,8 @@ class AlarmsWin(Toplevel):
     wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+W+E)
 
     self.m_alarms[subsys] = {}
+    self.m_alarms[subsys]['alarm_bits']   = 0x0
+    self.m_alarms[subsys]['warning_bits'] = 0x0
 
     row = 0
     col = 0
@@ -371,6 +398,8 @@ class AlarmsWin(Toplevel):
     wframe.grid(row=row, column=col, padx=10, pady=3, sticky=N+W+E)
 
     self.m_alarms[subsys] = {}
+    self.m_alarms[subsys]['alarm_bits']   = 0x0
+    self.m_alarms[subsys]['warning_bits'] = 0x0
 
     row = 0
     col = 0
@@ -410,6 +439,13 @@ class AlarmsWin(Toplevel):
   #
   def updateSysAlarms(self, status):
     subsys = 'system'
+
+    if  status.alarms.alarms   != self.m_alarms[subsys]['alarm_bits'] or \
+        status.alarms.warnings != self.m_alarms[subsys]['warning_bits']:
+      self.m_alarms[subsys]['alarm_bits']   = status.alarms.alarms
+      self.m_alarms[subsys]['warning_bits'] = status.alarms.warnings
+      print "DBG: %s: alarms=0x%x warnings=0x%x" % \
+          (subsys, status.alarms.alarms, status.alarms.warnings)
 
     alarm = 'general'
     severity = self.getSeverity(status.alarms, Alarms.ALARM_GEN,
@@ -468,6 +504,13 @@ class AlarmsWin(Toplevel):
     if not self.m_alarms.has_key(subsys):
       return
 
+    if  health.alarms.alarms   != self.m_alarms[subsys]['alarm_bits'] or \
+        health.alarms.warnings != self.m_alarms[subsys]['warning_bits']:
+      self.m_alarms[subsys]['alarm_bits']   = health.alarms.alarms
+      self.m_alarms[subsys]['warning_bits'] = health.alarms.warnings
+      print "DBG: %s: alarms=0x%x warnings=0x%x" % \
+          (subsys, health.alarms.alarms, health.alarms.warnings)
+
     alarm = 'batt_high'
     severity = self.getSeverity(health.alarms, Alarms.ALARM_MOTCTLR_BATT_V_HIGH,
                                                Alarms.WARN_MOTCTLR_BATT_V_HIGH)
@@ -524,6 +567,13 @@ class AlarmsWin(Toplevel):
     if not self.m_alarms.has_key(subsys):
       return
 
+    if  health.alarms.alarms   != self.m_alarms[subsys]['alarm_bits'] or \
+        health.alarms.warnings != self.m_alarms[subsys]['warning_bits']:
+      self.m_alarms[subsys]['alarm_bits']   = health.alarms.alarms
+      self.m_alarms[subsys]['warning_bits'] = health.alarms.warnings
+      print "DBG: %s: alarms=0x%x warnings=0x%x" % \
+          (subsys, health.alarms.alarms, health.alarms.warnings)
+
     alarm = 'fault'
     severity = self.getSeverity(health.alarms, Alarms.ALARM_MOT_FAULT,
                                                Alarms.WARN_NONE)
@@ -563,6 +613,7 @@ class AlarmsWin(Toplevel):
   #
   def onDeleteChild(self, w):
     self.m_isCreated = False
+    self.m_sub.unregister()
     self.destroy()
 
 
