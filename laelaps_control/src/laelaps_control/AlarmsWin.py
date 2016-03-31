@@ -116,9 +116,7 @@ class AlarmsWin(Toplevel):
     self.m_icons['app_icon'] = \
                   self.m_imageLoader.loadImage("icons/LaelapsAlarmsIcon.png")
     if self.m_icons['app_icon'] is not None:
-      self.master.tk.call('wm', 'iconphoto', self.master._w,
-          self.m_icons['app_icon'])
-
+      self.tk.call('wm', 'iconphoto', self._w, self.m_icons['app_icon'])
 
     # subscribe to extended robot status data
     self.m_sub = rospy.Subscriber("laelaps_control/robot_status_ex", 
