@@ -993,7 +993,6 @@ void LaelapsControl::updateDynamicsMsg(Dynamics &msg)
   //
   // Set robot values.
   //
-  // RDK msg.robot_odometer = ???
   msg.robot_pose.x      =  dynamics.m_pose.m_x;
   msg.robot_pose.y      =  dynamics.m_pose.m_y;
   msg.robot_pose.theta  =  dynamics.m_pose.m_theta;
