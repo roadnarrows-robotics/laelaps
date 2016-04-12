@@ -545,7 +545,7 @@ class window(Frame):
         'type':     'dial'}
 
     w = Counter(wframe, gauge_size=(15, 22),
-      gauge_val_min=-4000000000, gauge_val_max=4000000000,
+      gauge_val_min=-5000000000, gauge_val_max=5000000000,
       gauge_val_home=0,
       gauge_label="p", relief="flat", borderwidth=3)
       #relief='ridge', borderwidth=1, bg="#000000")
