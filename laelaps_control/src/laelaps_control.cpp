@@ -70,6 +70,7 @@
 // Boost libraries
 //
 #include <boost/bind.hpp>
+#include <boost/array.hpp>
 
 //
 // ROS
@@ -157,6 +158,7 @@
 #include "Laelaps/laeUtils.h"
 #include "Laelaps/laeXmlCfg.h"
 #include "Laelaps/laeTraj.h"
+#include "Laelaps/laeImu.h"
 #include "Laelaps/laeRobot.h"
 
 //
@@ -168,6 +170,9 @@
 using namespace std;
 using namespace laelaps;
 using namespace laelaps_control;
+
+/*! zero covariance matrix */
+static boost::array<double, 9> ZeroCovariance = {0.0, };
 
 
 //------------------------------------------------------------------------------
@@ -253,12 +258,10 @@ void LaelapsControl::advertiseServices()
                                           &LaelapsControl::getIlluminance,
                                           &(*this));
 
-#if 0 // FUTURE
   strSvc = "get_imu";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
                                           &LaelapsControl::getImu,
                                           &(*this));
-#endif // FUTURE
 
   strSvc = "get_imu_alt";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
@@ -458,18 +461,72 @@ bool LaelapsControl::getIlluminance(GetIlluminance::Request  &req,
   }
 }
 
+bool LaelapsControl::getImu(GetImu::Request  &req,
+                            GetImu::Response &rsp)
+{
+  const char *svc = "get_imu";
+
+  double                    accel[ImuAlt::NUM_AXES];
+  double                    gyro[ImuAlt::NUM_AXES];
+  double                    rpy[ImuAlt::NUM_AXES];
+  sensor::imu::Quaternion   q;
+  int                       rc;
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
+
+  rc = m_robot.getImu(accel, gyro, rpy, q);
+
+  if( rc == LAE_OK )
+  {
+    rsp.imu.orientation.x = q.m_x;
+    rsp.imu.orientation.y = q.m_y;
+    rsp.imu.orientation.z = q.m_z;
+    rsp.imu.orientation.w = q.m_w;
+
+    // for now until known
+    rsp.imu.orientation_covariance = ZeroCovariance;
+
+    rsp.imu.angular_velocity.x = gyro[sensor::imu::X];
+    rsp.imu.angular_velocity.y = gyro[sensor::imu::Y];
+    rsp.imu.angular_velocity.z = gyro[sensor::imu::Z];
+
+    // for now until known
+    rsp.imu.angular_velocity_covariance = ZeroCovariance;
+
+    rsp.imu.linear_acceleration.x = accel[sensor::imu::X];
+    rsp.imu.linear_acceleration.y = accel[sensor::imu::Y];
+    rsp.imu.linear_acceleration.z = accel[sensor::imu::Z];
+
+    // for now until known
+    rsp.imu.linear_acceleration_covariance = ZeroCovariance;
+
+    stampHeader(rsp.imu.header, 0);
+
+    ROS_INFO("IMU %s data.", req.name.c_str());
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Service %s failed on IMU %s: %s(rc=%d).",
+          svc, req.name.c_str(), getStrError(rc), rc);
+    return false;
+  }
+}
+
 bool LaelapsControl::getImuAlt(GetImuAlt::Request  &req,
                                GetImuAlt::Response &rsp)
 {
   const char *svc = "get_imu_alt";
-  double      accel[ImuAlt::NUM_AXES];
-  double      gyro[ImuAlt::NUM_AXES];
-  double      rpy[ImuAlt::NUM_AXES];
-  int         rc;
+
+  double                    accel[ImuAlt::NUM_AXES];
+  double                    gyro[ImuAlt::NUM_AXES];
+  double                    rpy[ImuAlt::NUM_AXES];
+  sensor::imu::Quaternion   q;
+  int                       rc;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), svc);
 
-  rc = m_robot.getImu(accel, gyro, rpy);
+  rc = m_robot.getImu(accel, gyro, rpy, q);
 
   if( rc == LAE_OK )
   {
@@ -886,7 +943,12 @@ void LaelapsControl::advertisePublishers(int nQueueDepth)
   m_publishers[strPub] =
     m_nh.advertise<IlluminanceState>(strPub, nQueueDepth);
 
-  strPub = "imu_state_alt";
+  // topic conforms to the robot_pose_ekf ROS node
+  strPub = "imu_data";
+  m_publishers[strPub] =
+    m_nh.advertise<sensor_msgs::Imu>(strPub, nQueueDepth);
+
+  strPub = "imu_alt_data";
   m_publishers[strPub] =
     m_nh.advertise<ImuAlt>(strPub, nQueueDepth);
 
@@ -958,9 +1020,7 @@ void LaelapsControl::publishSensorStates()
 
   m_publishers["illuminance_state"].publish(m_msgIlluminanceState);
 
-  updateImuAltMsg(m_msgImuAlt);
-
-  m_publishers["imu_state_alt"].publish(m_msgImuAlt);
+  publishImuStates();
 
   updateRangeStateMsg(m_msgRangeState);
 
@@ -1134,26 +1194,66 @@ void LaelapsControl::updateIlluminanceStateMsg(IlluminanceState &msg)
   }
 }
 
-void LaelapsControl::updateImuAltMsg(ImuAlt &msg)
+void LaelapsControl::publishImuStates()
 {
-  double      accel[ImuAlt::NUM_AXES];
-  double      gyro[ImuAlt::NUM_AXES];
-  double      rpy[ImuAlt::NUM_AXES];
-  int         rc;
+  double                    accel[ImuAlt::NUM_AXES];
+  double                    gyro[ImuAlt::NUM_AXES];
+  double                    rpy[ImuAlt::NUM_AXES];
+  sensor::imu::Quaternion   q;
+  int                       rc;
 
-  rc = m_robot.getImu(accel, gyro, rpy);
-
-  if( rc == LAE_OK )
+  //
+  // Grab latest IMU data
+  //
+  if( (rc = m_robot.getImu(accel, gyro, rpy, q)) != LAE_OK )
   {
-    for(int i = 0; i < ImuAlt::NUM_AXES; ++i)
-    {
-      msg.accel[i] = accel[i];
-      msg.gyro[i]  = gyro[i];
-      msg.rpy[i]   = rpy[i];
-    }
-
-    stampHeader(msg.header, msg.header.seq+1);
+    return;
   }
+
+  //
+  // Convert to ROS standard IMU messages
+  //
+  m_msgImu.orientation.x = q.m_x;
+  m_msgImu.orientation.y = q.m_y;
+  m_msgImu.orientation.z = q.m_z;
+  m_msgImu.orientation.w = q.m_w;
+
+    // for now until known
+  m_msgImu.orientation_covariance = ZeroCovariance;
+
+  m_msgImu.angular_velocity.x = gyro[sensor::imu::X];
+  m_msgImu.angular_velocity.y = gyro[sensor::imu::Y];
+  m_msgImu.angular_velocity.z = gyro[sensor::imu::Z];
+
+    // for now until known
+  m_msgImu.angular_velocity_covariance = ZeroCovariance;
+
+  m_msgImu.linear_acceleration.x = accel[sensor::imu::X];
+  m_msgImu.linear_acceleration.y = accel[sensor::imu::Y];
+  m_msgImu.linear_acceleration.z = accel[sensor::imu::Z];
+
+    // for now until known
+  m_msgImu.linear_acceleration_covariance = ZeroCovariance;
+
+  stampHeader(m_msgImu.header, m_msgImu.header.seq+1);
+
+  //
+  // Convert to alternative IMU ROS message
+  //
+  for(int i = 0; i < ImuAlt::NUM_AXES; ++i)
+  {
+    m_msgImuAlt.accel[i] = accel[i];
+    m_msgImuAlt.gyro[i]  = gyro[i];
+    m_msgImuAlt.rpy[i]   = rpy[i];
+  }
+
+  stampHeader(m_msgImuAlt.header, m_msgImuAlt.header.seq+1);
+
+  //
+  // Publish messages
+  //
+  m_publishers["imu_data"].publish(m_msgImu);
+  m_publishers["imu_alt_data"].publish(m_msgImuAlt);
 }
 
 void LaelapsControl::updateRangeStateMsg(RangeState &msg)
@@ -1188,12 +1288,18 @@ void LaelapsControl::subscribeToTopics(int nQueueDepth)
 {
   string  strSub;
 
-  strSub = "set_duty_cycles";
+  strSub = "cmd_motor_duties";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
                                           &LaelapsControl::execSetDutyCycles,
                                           &(*this));
 
-  strSub = "set_velocities";
+  // standard topic used in various ROS nodes for the twist message
+  //strSub = "cmd_vel";
+  //m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+  //                                        &LaelapsControl::execSetTwist,
+  //                                        &(*this));
+
+  strSub = "cmd_wheel_velocities";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
                                           &LaelapsControl::execSetVelocities,
                                           &(*this));
@@ -1202,7 +1308,7 @@ void LaelapsControl::subscribeToTopics(int nQueueDepth)
 void LaelapsControl::execSetDutyCycles(const laelaps_control::DutyCycle
                                                                       &msgDuty)
 {
-  const char     *topic = "set_duty_cyles";
+  const char     *topic = "cmd_motor_duties";
   LaeMapDutyCycle duties;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), topic);
@@ -1221,7 +1327,7 @@ void LaelapsControl::execSetDutyCycles(const laelaps_control::DutyCycle
 
 void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
 {
-  const char     *topic = "set_velocities";
+  const char     *topic = "cmd_wheel_velocities";
   LaeMapVelocity  vel;
 
   ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), topic);

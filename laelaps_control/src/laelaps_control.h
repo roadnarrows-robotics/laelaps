@@ -307,13 +307,6 @@ namespace laelaps_control
     void updateIlluminanceStateMsg(IlluminanceState &msg);
 
     /*!
-     * \brief Update IMU alternative message from current IMU values.
-     *
-     * \param [out] msg   IMU alternative message.
-     */
-    void updateImuAltMsg(ImuAlt &msg);
-
-    /*!
      * \brief Update range sensors state message from current range values.
      *
      * \param [out] msg   Range state message.
@@ -601,6 +594,11 @@ namespace laelaps_control
      * \brief Publish sensor state topics.
      */
     void publishSensorStates();
+
+    /*!
+     * \brief Publish IMU sensor state topics.
+     */
+    void publishImuStates();
 
 
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .

@@ -340,11 +340,11 @@ void LaelapsTeleop::advertisePublishers(int nQueueDepth)
 {
   string  strPub;
 
-  strPub = "/laelaps_control/set_duty_cycles";
+  strPub = "/laelaps_control/cmd_motor_duties";
   m_publishers[strPub] =
     m_nh.advertise<laelaps_control::DutyCycle>(strPub, nQueueDepth);
 
-  strPub = "/laelaps_control/set_velocities";
+  strPub = "/laelaps_control/cmd_wheel_velocities";
   m_publishers[strPub] =
     m_nh.advertise<laelaps_control::Velocity>(strPub, nQueueDepth);
 
@@ -372,7 +372,7 @@ void LaelapsTeleop::publishDutyCycles(double dutyLeft, double dutyRight)
   msg.duties.push_back(dutyRight);
 
   // publish
-  m_publishers["/laelaps_control/set_duty_cycles"].publish(msg);
+  m_publishers["/laelaps_control/cmd_motor_duties"].publish(msg);
 
   // RDK
   ROS_INFO("Duties = %4.1lf%%, %4.1lf%%.", dutyLeft, dutyRight);
@@ -401,7 +401,7 @@ void LaelapsTeleop::publishVelocities(double speedLeft, double speedRight)
   msg.velocities.push_back(fVelRight);
 
   // publish
-  m_publishers["/laelaps_control/set_velocities"].publish(msg);
+  m_publishers["/laelaps_control/cmd_wheel_velocities"].publish(msg);
 
   // RDK
   ROS_INFO("Speed = %6.1lf%%, %6.1lf%%.", speedLeft*100.0, speedRight*100.0);
