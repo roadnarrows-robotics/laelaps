@@ -1211,7 +1211,7 @@ void LaelapsControl::publishImuStates()
   }
 
   //
-  // Convert to ROS standard IMU messages
+  // Convert to ROS standard IMU message
   //
   m_msgImu.orientation.x = q.m_x;
   m_msgImu.orientation.y = q.m_y;
