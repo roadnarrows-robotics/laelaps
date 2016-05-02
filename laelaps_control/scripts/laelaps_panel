@@ -110,7 +110,8 @@ class window(Frame):
     kw = self.initData(kw)
 
     # publish speed command
-    self.m_pub_velocities = rospy.Publisher("laelaps_control/set_velocities",
+    self.m_pub_velocities = \
+        rospy.Publisher("laelaps_control/cmd_wheel_velocities",
         Velocity, queue_size=2)
 
     self.m_imageLoader = ImageLoader(py_pkg='laelaps_control.images',
