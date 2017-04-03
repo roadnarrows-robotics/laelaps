@@ -23,6 +23,9 @@ uint32  ALARM_MOTCTLR_LOGIC_V_HIGH  = 1024  # motor controller logic over volts
 uint32  ALARM_MOTCTLR_LOGIC_V_LOW   = 2048  # motor controller logic under volts
 uint32  ALARM_MOT_OVER_CUR          = 4096  # motor over current alarm
 uint32  ALARM_MOT_FAULT             = 8192  # motor faulted alarm
+uint32  ALARM_SENSOR_IMU            = 65536 # imu sensor alarm
+uint32  ALARM_SENSOR_RANGE          = 131072 # range sensors alarm
+uint32  ALARM_SENSOR_FCAM           = 272144 # front camera sensor alarm
 
 # warning bits
 uint32  WARN_NONE                 = 0     # no warnings

@@ -19,7 +19,7 @@
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2015-2016.  RoadNarrows LLC.\n
+##   (C) 2015-2017.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -85,6 +85,7 @@ class Dial(Frame):
     self.m_gaugeSize      = 300       ## gauge size (pixels)
     self.m_gaugeRes       = 1.0       ## gauge needle resolution (degrees)
     self.m_gaugeMovingWin = 1         ## moving window smoothing size 
+    self.m_gaugeStepSize  = 0.0;      ## value hysteresis
     self.m_gaugeImgDial   = 'GaugeDialGreenRed.png' # dial image file name
     self.m_gaugeImgNeedle = 'GaugeNeedleAmber.png'  # needle image file name
 
@@ -119,6 +120,8 @@ class Dial(Frame):
         self.m_gaugeRes = float(v)
       elif k == "gauge_moving_win":
         self.m_gaugeMovingWin = int(v)
+      elif k == "gauge_step_size":
+        self.m_gaugeStepSize = float(v)
       elif k == "gauge_dial_image":
         self.m_gaugeImgDial = v
       elif k == "gauge_needle_image":
@@ -134,8 +137,9 @@ class Dial(Frame):
     self.m_gaugeValRange = self.m_gaugeValMax - self.m_gaugeValMin
     self.m_filter = self.m_gaugeMovingWin * \
                                   [self.m_gaugeValHome/self.m_gaugeMovingWin]
-    self.m_value  = self.m_gaugeValHome
-    self.m_angle  = 360.0   ## force update
+    self.m_value = self.m_gaugeValHome
+    self.m_angle = 360.0             ## force update
+    self.m_setpt = self.m_value + self.m_gaugeStepSize * 2 ## force update
 
     self.m_dir    = 1 ## for testing
 
@@ -157,7 +161,7 @@ class Dial(Frame):
       self.showValue(self.m_value)
 
   #
-  ## \brief Create gui widgets.
+  ## \brief Create Dial gui widgets.
   #
   def createGauge(self):
     imageLoader         = ImageLoader(py_pkg="laelaps_control.images")
@@ -232,53 +236,74 @@ class Dial(Frame):
     self.m_idValue = self.m_canvas.create_text(origin, text="",
                 font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
 
+  ## \brief Update Dial value and gauge display.
   #
-  def update(self, val):
-    a = self.toGauge(val)
-    #print 'val,angle', val, a
-    self.rotate(a)
-    if self.m_gaugeShowVal:
-      self.showValue(self.m_value)
+  def update(self, val, debug=False):
+    value = self.toGaugeDigital(val)
+    setpt = self.hysteresis(value)
+    angle = self.toGaugeAngle(setpt)
+    if debug:
+      print 'dbg', value, setpt, angle
+    self.rotateNeedle(angle)
+    self.showValue(setpt)
+    self.m_value = value
+    self.m_setpt = setpt
+    self.m_angle = angle
 
+  ## \brief Convert new Dial value to Dial angle.
   #
-  def toGauge(self, val):
+  def toGaugeDigital(self, val):
     if val < self.m_gaugeValMin:
       val = self.m_gaugeValMin
     elif val > self.m_gaugeValMax:
       val = self.m_gaugeValMax
-    self.m_value = self.smooth(val)
-    # 0.0 - 1.0
-    r = (self.m_value - self.m_gaugeValMin) / self.m_gaugeValRange
+    return self.smooth(val)
+
+  ## \brief Convert digital Dial value to Dial angle.
+  #
+  def toGaugeAngle(self, val):
+    # 0.0, 1.0
+    r = (val - self.m_gaugeValMin) / self.m_gaugeValRange
     # 135, -135
     return Dial.GaugeMaxAngle - Dial.GaugeRange * r
 
-  #
+  ## \brief Smooth Dial new vaiue with sliding window.
   def smooth(self, val):
     if self.m_gaugeMovingWin <= 1:
       return float(val)
     else:
-      lastVal = self.m_filter.pop(self.m_gaugeMovingWin - 1)
-      newVal  = float(val) / self.m_gaugeMovingWin
-      val     = self.m_value + newVal - lastVal
-      self.m_filter.insert(0, newVal)
+      lastWinVal = self.m_filter.pop(self.m_gaugeMovingWin - 1)
+      newWinVal  = float(val) / self.m_gaugeMovingWin
+      val        = self.m_value + newWinVal - lastWinVal
+      self.m_filter.insert(0, newWinVal)
       return val
 
-  #
-  def rotate(self, angle):
+  def hysteresis(self, val):
+    if  (val >= self.m_setpt - self.m_gaugeStepSize) and \
+        (val <= self.m_setpt + self.m_gaugeStepSize):
+      return self.m_setpt
+    else:
+      return val
+
+  ## \brief Rotate Dial needle.
+  def rotateNeedle(self, angle):
     #print 'angle', angle
+    # change smaller than gauge resolution
     if (angle >= self.m_angle - self.m_gaugeRes/2.0) and \
        (angle <= self.m_angle + self.m_gaugeRes/2.0):
       return
-    if self.m_imgNeedle is not None:
+    elif self.m_imgNeedle is not None:
       img = self.m_imgNeedle.rotate(angle, resample=Image.BICUBIC)
       self.m_photoNeedle = ImageTk.PhotoImage(img)
       self.m_canvas.itemconfig(self.m_idNeedle, image=self.m_photoNeedle)
-    self.m_angle = angle
 
-  #
+  ## \brief Show Dial digital value.
   def showValue(self, val):
-    s = self.m_gaugeValFmt % (self.m_value)
-    self.m_canvas.itemconfig(self.m_idValue, text=s)
+    if val == self.m_value:
+      return
+    elif self.m_gaugeShowVal:
+      s = self.m_gaugeValFmt % (val)
+      self.m_canvas.itemconfig(self.m_idValue, text=s)
 
   #
   def showLabel(self, text):
@@ -304,8 +329,9 @@ class Dial(Frame):
       self.m_dir = -1
     elif (self.m_dir < 0) and (self.m_angle-inc < Dial.GaugeMinAngle):
       self.m_dir = 1
-    a = self.m_angle + self.m_dir * inc
-    self.rotate(a)
+    angle = self.m_angle + self.m_dir * inc
+    self.rotateNeedle(angle)
+    self.m_angle = angle
     self.master.after(1000, self.testGaugeRange)
 
 
@@ -685,6 +711,12 @@ class Battery(Frame):
   def setDefaults(self):
     # defaults
     self.m_gaugeLabel     = ""        ## show fixed label below gauge counter
+    self.m_gaugeShowVal   = False     ## do [not] show value on gauge face
+    self.m_gaugeValMin    = 0.0       ## gauge minimum value
+    self.m_gaugeValMax    = 100.0     ## gauge maximum value
+    self.m_gaugeValHome   = 0.0       ## gauge home value
+    self.m_gaugeStepSize  = 0.0;      ## value hysteresis
+    self.m_gaugeValFmt    = "%.0f"    ## gauge value display format
     self.m_gaugeTextColor = "#000000" ## gauge label display color
     self.m_gaugeSize      = None      ## gauge size (width,height)
     self.m_gaugeRot       = 0.0       ## gauge rotation (degrees)
@@ -702,6 +734,20 @@ class Battery(Frame):
     for k,v in kw.iteritems():
       if k == "gauge_label":
         self.m_gaugeLabel = v
+      elif k == "gauge_show_val":
+        self.m_gaugeShowVal = bool(v)
+      elif k == "gauge_val_min":
+        self.m_gaugeValMin = float(v)
+      elif k == "gauge_val_max":
+        self.m_gaugeValMax = float(v)
+      elif k == "gauge_val_home":
+        self.m_gaugeValHome = float(v)
+      elif k == "gauge_step_size":
+        self.m_gaugeStepSize = float(v)
+      elif k == "gauge_text_color":
+        self.m_gaugeTextColor = str(v)
+      elif k == "gauge_val_fmt":
+        self.m_gaugeValFmt = str(v)
       elif k == "gauge_text_color":
         self.m_gaugeTextColor = str(v)
       elif k == "gauge_size":
@@ -710,6 +756,17 @@ class Battery(Frame):
         self.m_gaugeRot = float(v)
       else:
         passthru[k] = v
+
+    if self.m_gaugeValHome < self.m_gaugeValMin:
+      self.m_gaugeValHome = self.m_gaugeValMin
+    elif self.m_gaugeValHome > self.m_gaugeValMax:
+      self.m_gaugeValHome = self.m_gaugeValMax
+
+    self.m_gaugeValRange = self.m_gaugeValMax - self.m_gaugeValMin
+
+    self.m_value    = self.m_gaugeValHome
+    self.m_valuePct = self.toGaugePct(self.m_value)
+    self.m_setpt    = self.m_value + self.m_gaugeStepSize * 2 ## force update
 
     return passthru
 
@@ -721,7 +778,7 @@ class Battery(Frame):
     chkSize             = False
 
     #
-    # Counter blank
+    # Target gauge size
     #
     if self.m_gaugeSize is not None and len(self.m_gaugeSize) == 2:
       tgtSize = (self.m_gaugeSize[0], self.m_gaugeSize[1])
@@ -735,7 +792,7 @@ class Battery(Frame):
       if self.m_img[key] is None:
         print "Error: Gauge.Battery: Cannot open image %s." % (fname)
         return
-      if self.m_gaugeRot != 1.0:
+      if self.m_gaugeRot != 0.0:
         self.m_img[key] = self.m_img[key].rotate(self.m_gaugeRot, expand=1,
                                                 resample=Image.BICUBIC)
       if chkSize:
@@ -744,7 +801,7 @@ class Battery(Frame):
           self.m_img[key] = self.m_img[key].resize(tgtSize, Image.BICUBIC)
       self.m_photo[key] = ImageTk.PhotoImage(self.m_img[key])
 
-    self.m_keyBatt = 'batt_0'
+    self.m_keyBatt   = 'batt_0'
 
     #
     # Dimensions
@@ -753,20 +810,23 @@ class Battery(Frame):
     canvasWidth   = battImgSize[0]
     canvasHeight  = battImgSize[1]
 
+    #
+    # Label and Value Font
+    #
+    fontMargin  = 1
     if len(self.m_gaugeLabel) > 0:
       label_width = len(self.m_gaugeLabel) * 13.0 # approx. 10pt
-      scale = canvasWidth / label_width * 0.90
-      fontSize = int(13.0 * scale) 
-      if fontSize <= 10:
-        fontWeight = "normal"
-      else:
-        fontWeight = "bold"
-      fontMargin  = 1
-      helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
-      canvasHeight += fontSize + 2 * fontMargin
     else:
-      fontSize    = 0
-      fontMargin  = 0
+      label_width = canvasWidth - 2 * fontMargin
+    scale = canvasWidth / label_width * 0.90
+    fontSize = int(13.0 * scale) 
+    if fontSize <= 10:
+      fontWeight = "normal"
+    else:
+      fontWeight = "bold"
+    helv = tkFont.Font(family="Helvetica", size=-fontSize, weight=fontWeight)
+    if len(self.m_gaugeLabel) > 0:
+      canvasHeight += fontSize + 2 * fontMargin
 
     #
     # Canvas
@@ -774,27 +834,67 @@ class Battery(Frame):
     self.m_canvas = Canvas(self, width=canvasWidth, height=canvasHeight)
     self.m_canvas.grid(row=0, column=0, padx=0, pady=0)
 
-    # battery
-    x = canvasWidth / 2
-    y = canvasHeight / 2
-    self.m_idImgBatt = self.m_canvas.create_image((x, y),
+    #
+    # Canvas battery image widget
+    #
+    origin = (canvasWidth / 2, battImgSize[1] / 2)
+    self.m_idImgBatt = self.m_canvas.create_image(origin,
                                             image=self.m_photo[self.m_keyBatt])
+
+    #
+    # Canvas label widget at bottom 
+    #
+    origin = (canvasWidth/2, canvasHeight-fontSize/2-fontMargin)
+    self.m_idLabel = self.m_canvas.create_text(origin, text="",
+                font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
+    if len(self.m_gaugeLabel) > 0:
+      self.m_canvas.itemconfig(self.m_idLabel, text=self.m_gaugeLabel)
+
+    #
+    # Canvas numeric value widget at center
+    #
+    origin = (canvasWidth / 2, battImgSize[1] / 2)
+    self.m_idValue = self.m_canvas.create_text(origin, text="",
+                font=helv, justify=CENTER, fill=self.m_gaugeTextColor)
+    if self.m_gaugeShowVal:
+      self.showValue(self.m_value)
 
     self.m_isCreated  = True
 
-  #
+  ## \brief Battery
   def update(self, val, isCharging=False):
     if self.m_isCreated:
-      val = self.toGauge(val)
-      key = self.toKey(val, isCharging)
+      value   = self.toGauge(val)
+      valPct  = self.toGaugePct(value)
+      setpt   = self.hysteresis(valPct)
+      key = self.toKey(setpt, isCharging)
       if key != self.m_keyBatt:
         self.m_canvas.itemconfig(self.m_idImgBatt, image=self.m_photo[key])
         self.m_keyBatt = key
-      self.m_value      = val
+      self.showValue(value)
+      self.m_value      = value
+      self.m_setpt      = setpt
+      self.m_valuePct   = valPct
       self.m_isCharging = isCharging
 
   #
   def toGauge(self, val):
+    if val < self.m_gaugeValMin:
+      val = self.m_gaugeValMin
+    elif val > self.m_gaugeValMax:
+      val = self.m_gaugeValMax
+    return val
+
+  def hysteresis(self, val):
+    if  (val >= self.m_setpt - self.m_gaugeStepSize) and \
+        (val <= self.m_setpt + self.m_gaugeStepSize):
+      return self.m_setpt
+    else:
+      return val
+
+  #
+  def toGaugePct(self, val):
+    val = (val - self.m_gaugeValMin) / self.m_gaugeValRange * 100.0
     if val < Battery.GaugeMinCharge:
       val = Battery.GaugeMinCharge
     elif val > Battery.GaugeMaxCharge:
@@ -816,15 +916,25 @@ class Battery(Frame):
     return key
 
   #
+  def showValue(self, val):
+    if val == self.m_value:
+      return
+    elif self.m_gaugeShowVal:
+      s = self.m_gaugeValFmt % (val)
+      self.m_canvas.itemconfig(self.m_idValue, text=s)
+
+  #
   def testGauge(self):
     ndir = 0
-    if self.m_value >= Battery.GaugeMaxCharge:
+    if self.m_value >= self.m_gaugeValMax:
       ndir = -1
       isCharging = False
-    elif self.m_value <= Battery.GaugeMinCharge:
+    elif self.m_value <= self.m_gaugeValMin:
       ndir = 1
       isCharging = True
-    delta = random.uniform(0, Battery.GaugeResCharge/2)
+    #delta = random.uniform(0, Battery.GaugeResCharge/2)
+    delta = random.uniform(0, self.m_gaugeValRange)
+    delta = delta * 0.1
     if ndir == 1:
       self.m_testDir = ndir
       isCharging = True
@@ -1046,7 +1156,10 @@ if __name__ == '__main__':
   indEStop = Indicator(subframe, gauge_label='EStop')
   indEStop.grid(row=0, column=4)
 
-  batt = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
+  #batt = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
+  batt = Battery(subframe, gauge_rot=90, gauge_size=(100, 48),
+      gauge_val_min=8.7, gauge_val_max=12.0,
+      gauge_show_val=True, gauge_val_fmt="%.1fV")
   batt.grid(row=0, column=5)
 
   # dials
@@ -1143,9 +1256,12 @@ if __name__ == '__main__':
 
   win.after(900, dialPower.testGauge)
   win.after(2033, dialSpeed.testGauge)
+  win.after(3031, dialTemp.testGauge)
   win.after(193, counterMeters.testGaugeCountingUp)
   win.after(2193, batt.testGauge)
 
+  win.after(200, dialPtPower.testGauge)
+  win.after(233, dialPtSpeed.testGauge)
   win.after(894, counterPulses.testGauge)
 
   DialExtern = dialDft

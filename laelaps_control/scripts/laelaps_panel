@@ -20,7 +20,7 @@
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2015-2016.  RoadNarrows LLC.\n
+##   (C) 2015-2017.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -356,7 +356,7 @@ class window(Frame):
     w = Dial(wframe,
         gauge_val_min=0.0, gauge_val_max=250.0, gauge_val_home=0.0,
         gauge_size=150, gauge_res=0.5, gauge_label="watts",
-        gauge_show_val=True, gauge_moving_win=4,
+        gauge_show_val=True, gauge_moving_win=4, gauge_step_size=0.1,
         gauge_dial_image="GaugeDialGreenRed.png",
         gauge_needle_image="GaugeNeedleWhite.png",
         gauge_text_color="#ffffff")
@@ -370,7 +370,7 @@ class window(Frame):
     w = Dial(wframe,
         gauge_val_min=0.0, gauge_val_max=4.5, gauge_val_home=0,
         gauge_size=150, gauge_res=0.5, gauge_label="m/s",
-        gauge_show_val=True, gauge_moving_win=4,
+        gauge_show_val=True, gauge_moving_win=4, gauge_step_size=0.1,
         gauge_dial_image="GaugeDialGreenRed.png",
         gauge_needle_image="GaugeNeedleWhite.png",
         gauge_text_color="#ffffff")
@@ -417,7 +417,9 @@ class window(Frame):
         'widget':   w,
         'type':     'indicator'}
   
-    w = Battery(subframe, gauge_rot=90, gauge_size=(100, 48))
+    w = Battery(subframe, gauge_rot=90, gauge_size=(100, 48),
+        gauge_val_min=9.3, gauge_val_max=12.0, gauge_step_size=4.0,
+        gauge_show_val=True, gauge_val_fmt="%.1fV")
     w.grid(row=0, column=2)
     self.m_robotState['battery'] = {
         'raw_val':  (0.0, False),
@@ -520,7 +522,7 @@ class window(Frame):
     w = Dial(wframe,
       gauge_val_min=0.0, gauge_val_max=60.0, gauge_val_home=0.0,
       gauge_size=100, gauge_res=0.5, gauge_label="watts",
-      gauge_show_val=True, gauge_moving_win=4,
+      gauge_show_val=True, gauge_moving_win=4, gauge_step_size=0.1,
       gauge_dial_image="GaugeDialGreenRed.png",
       gauge_needle_image="GaugeNeedleWhite.png",
       gauge_text_color="#ffffff")
@@ -1160,16 +1162,16 @@ class window(Frame):
       self.m_robotState[key]['raw_val'] = val
 
     key = 'battery'
-    charge = status.battery
+    voltage = status.voltage
     val = status.is_charging.val
     if val == TriState.TRUE:
       isCharging = True
     else:
       isCharging = False
-    if  self.m_robotState[key]['raw_val'][0] != charge or \
+    if  self.m_robotState[key]['raw_val'][0] != voltage or \
         self.m_robotState[key]['raw_val'][1] != isCharging:
-      self.m_robotState[key]['widget'].update(charge, isCharging)
-      self.m_robotState[key]['raw_val'] = (charge, isCharging)
+      self.m_robotState[key]['widget'].update(voltage, isCharging)
+      self.m_robotState[key]['raw_val'] = (voltage, isCharging)
 
   #
   ## \brief Show dynamics state.

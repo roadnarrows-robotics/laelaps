@@ -160,11 +160,12 @@ class AlarmsWin(Toplevel):
     self.createHeading(self, 0, 0)
     self.createSysAlarmPanel(self, 1, 0)
     self.createAllMotorCtlrAlarmPanel(self, 2, 0)
+    self.createSensorAlarmPanel(self, 3, 0)
 
     # close button
     w = Button(self, width=10, text='Close',
         command=lambda: self.onDeleteChild(self), anchor=CENTER)
-    w.grid(row=3, column=0, sticky=N, pady=5)
+    w.grid(row=4, column=0, sticky=N, pady=5)
     self.m_bttnClose = w
 
   #
@@ -205,9 +206,9 @@ class AlarmsWin(Toplevel):
     row = 0
     col = 0
 
-    w = Indicator(wframe, gauge_label='General')
+    w = Indicator(wframe, gauge_label='Alarms')
     w.grid(row=row, column=col)
-    self.m_alarms[subsys]['general'] = {
+    self.m_alarms[subsys]['alarms'] = {
         'val':      'none',
         'var':      None,
         'widget':   w,
@@ -422,6 +423,62 @@ class AlarmsWin(Toplevel):
         'type':     'indicator'}
 
   #
+  ## \brief Create sensor subsystmes alarm panel.
+  ##
+  ## \param parent    Parent container widget.
+  ## \param row       Row in parent widget.
+  ## \param col       Column in parent widget.
+  #
+  def createSensorAlarmPanel(self, parent, row, col):
+    title = "Sensor Alarms"
+
+    wframe = LabelFrame(parent, text=title)
+    wframe['font'] =('Helvetica', 12)
+    wframe['fg'] = fgColors['focus']
+    wframe['borderwidth'] = 2
+    wframe['relief'] = 'ridge'
+    wframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+W+E)
+
+    subsys = 'sensors'
+
+    self.m_alarms[subsys] = {}
+    self.m_alarms[subsys]['alarm_bits']   = 0x0
+    self.m_alarms[subsys]['warning_bits'] = 0x0
+
+    row = 0
+    col = 0
+
+    w = Indicator(wframe, gauge_label='Range')
+    w.grid(row=row, column=col)
+    self.m_alarms[subsys]['range'] = {
+        'val':      'none',
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+
+    col += 1
+
+    w = Indicator(wframe, gauge_label='IMU')
+    w.grid(row=row, column=col)
+    self.m_alarms[subsys]['imu'] = {
+        'val':      'none',
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+
+    col += 1
+
+    w = Indicator(wframe, gauge_label='Front\nCamera')
+    w.grid(row=row, column=col)
+    self.m_alarms[subsys]['fcam'] = {
+        'val':      'none',
+        'var':      None,
+        'widget':   w,
+        'type':     'indicator'}
+
+    col += 1
+
+  #
   ## \brief Update all alarms from received status message.
   ##
   ## \param status    Robot extended status message.     
@@ -430,6 +487,7 @@ class AlarmsWin(Toplevel):
     self.updateSysAlarms(status)
     self.updateAllMotorCtlrAlarmPanels(status)
     self.updateAllMotorAlarmPanels(status)
+    self.updateSensorAlarmPanel(status)
 
   #
   ## \brief Update system alarms from received status message.
@@ -446,9 +504,11 @@ class AlarmsWin(Toplevel):
       #print "DBG: %s: alarms=0x%x warnings=0x%x" % \
       #    (subsys, status.alarms.alarms, status.alarms.warnings)
 
-    alarm = 'general'
-    severity = self.getSeverity(status.alarms, Alarms.ALARM_GEN,
-                                               Alarms.WARN_NONE)
+    alarm = 'alarms'
+    if status.alarms != Alarms.ALARM_NONE:
+      severity = 'alarm'
+    else:
+      severity = 'none'
     if self.m_alarms[subsys][alarm]['val'] != severity:
       self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
       self.m_alarms[subsys][alarm]['val'] = severity
@@ -556,7 +616,7 @@ class AlarmsWin(Toplevel):
       self.updateMotorAlarmPanel(health)
 
   #
-  ## \brief Create specific motor alarms subpanel.
+  ## \brief Update specific motor alarms subpanel.
   ##
   ## \param health    Motor health status.
   #
@@ -583,6 +643,34 @@ class AlarmsWin(Toplevel):
     alarm = 'over_current'
     severity = self.getSeverity(health.alarms, Alarms.ALARM_MOT_OVER_CUR,
                                                Alarms.WARN_MOT_OVER_CUR)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+  #
+  ## \brief Update sensor alarms.
+  ##
+  #
+  def updateSensorAlarmPanel(self, status):
+    subsys = 'sensors'
+
+    alarm = 'range'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_SENSOR_RANGE,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'imu'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_SENSOR_IMU,
+                                               Alarms.WARN_NONE)
+    if self.m_alarms[subsys][alarm]['val'] != severity:
+      self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
+      self.m_alarms[subsys][alarm]['val'] = severity
+
+    alarm = 'fcam'
+    severity = self.getSeverity(status.alarms, Alarms.ALARM_SENSOR_FCAM,
+                                               Alarms.WARN_NONE)
     if self.m_alarms[subsys][alarm]['val'] != severity:
       self.m_alarms[subsys][alarm]['widget'].update(alarmColor[severity])
       self.m_alarms[subsys][alarm]['val'] = severity
