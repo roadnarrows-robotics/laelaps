@@ -716,6 +716,7 @@ class Battery(Frame):
     self.m_gaugeValMax    = 100.0     ## gauge maximum value
     self.m_gaugeValHome   = 0.0       ## gauge home value
     self.m_gaugeStepSize  = 0.0;      ## value hysteresis
+    self.m_gaugeMovingWin = 1         ## moving window smoothing size 
     self.m_gaugeValFmt    = "%.0f"    ## gauge value display format
     self.m_gaugeTextColor = "#000000" ## gauge label display color
     self.m_gaugeSize      = None      ## gauge size (width,height)
@@ -744,6 +745,8 @@ class Battery(Frame):
         self.m_gaugeValHome = float(v)
       elif k == "gauge_step_size":
         self.m_gaugeStepSize = float(v)
+      elif k == "gauge_moving_win":
+        self.m_gaugeMovingWin = int(v)
       elif k == "gauge_text_color":
         self.m_gaugeTextColor = str(v)
       elif k == "gauge_val_fmt":
@@ -763,6 +766,9 @@ class Battery(Frame):
       self.m_gaugeValHome = self.m_gaugeValMax
 
     self.m_gaugeValRange = self.m_gaugeValMax - self.m_gaugeValMin
+
+    self.m_filter = self.m_gaugeMovingWin * \
+                                  [self.m_gaugeValHome/self.m_gaugeMovingWin]
 
     self.m_value    = self.m_gaugeValHome
     self.m_valuePct = self.toGaugePct(self.m_value)
@@ -883,7 +889,18 @@ class Battery(Frame):
       val = self.m_gaugeValMin
     elif val > self.m_gaugeValMax:
       val = self.m_gaugeValMax
-    return val
+    return self.smooth(val)
+
+  ## \brief Smooth Battery new vaiue with sliding window.
+  def smooth(self, val):
+    if self.m_gaugeMovingWin <= 1:
+      return float(val)
+    else:
+      lastWinVal = self.m_filter.pop(self.m_gaugeMovingWin - 1)
+      newWinVal  = float(val) / self.m_gaugeMovingWin
+      val        = self.m_value + newWinVal - lastWinVal
+      self.m_filter.insert(0, newWinVal)
+      return val
 
   def hysteresis(self, val):
     if  (val >= self.m_setpt - self.m_gaugeStepSize) and \

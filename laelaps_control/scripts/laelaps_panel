@@ -418,7 +418,8 @@ class window(Frame):
         'type':     'indicator'}
   
     w = Battery(subframe, gauge_rot=90, gauge_size=(100, 48),
-        gauge_val_min=9.3, gauge_val_max=12.0, gauge_step_size=4.0,
+        gauge_val_min=9.0, gauge_val_max=12.3, gauge_step_size=2.5,
+        gauge_moving_win=4,
         gauge_show_val=True, gauge_val_fmt="%.1fV")
     w.grid(row=0, column=2)
     self.m_robotState['battery'] = {
