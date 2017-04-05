@@ -505,7 +505,7 @@ class AlarmsWin(Toplevel):
       #    (subsys, status.alarms.alarms, status.alarms.warnings)
 
     alarm = 'alarms'
-    if status.alarms != Alarms.ALARM_NONE:
+    if status.alarms.alarms != Alarms.ALARM_NONE:
       severity = 'alarm'
     else:
       severity = 'none'
