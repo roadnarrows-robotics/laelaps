@@ -1,7 +1,10 @@
 ## All icons in Laelaps package.
 __all__ = [
   'LaelapsAlarmsIcon.png',
+  'LaelapsCamIcon.png',
+  'LaelapsImuIcon.png',
   'LaelapsPanelIcon.png',
+  'LaelapsRangeIcon.png',
   'icon_alarm.png',
   'icon_bot_back.png',
   'icon_bot_brake.png',

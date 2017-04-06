@@ -1,0 +1,57 @@
+#! /usr/bin/env python
+
+###############################################################################
+#
+# Package:   RoadNarrows Robotics Laelaps Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/laelaps
+#
+# ROS Node:  laelaps_ranges
+#
+# File: laelaps_ranges
+#
+## \file 
+##
+## \brief Stand-alone graphical panel to display Laelaps range sensor data.
+##
+## \author Robin Knight (robin.knight@roadnarrows.com)
+##  
+## \par Copyright:
+##   (C) 2017.  RoadNarrows LLC.\n
+##   (http://www.roadnarrows.com)\n
+##   All Rights Reserved
+##
+# @EulaBegin@
+# @EulaEnd@
+#
+###############################################################################
+
+from Tkinter import *
+from Tkconstants import *
+from tkFileDialog import *
+import tkFont
+
+import roslib; roslib.load_manifest('laelaps_control')
+import rospy
+
+from laelaps_control.RangeSensorWin import RangeSensorFrame
+
+# create root 
+root = Tk()
+
+# window 'x' button
+root.protocol('WM_DELETE_WINDOW', root.destroy)
+
+root.title('laelaps_ranges')
+
+# alarams frame
+frame = RangeSensorFrame(master=root)
+frame.grid(row=0, column=0, padx=5, pady=5)
+
+# close button
+w = Button(root, width=10, text='Close', command=root.destroy, anchor=CENTER)
+w.grid(row=1, column=0, sticky=N, pady=5)
+
+rospy.init_node("laelaps_ranges")
+
+root.mainloop()

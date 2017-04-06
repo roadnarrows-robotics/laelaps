@@ -3,6 +3,7 @@ __all__ = [
   'AboutDlg',
   'AlarmsWin',
   'images',
+  'RangeSensorWin',
   'Utils',
   'WarnDlg',
 ]

@@ -12,9 +12,6 @@
 #
 ## \file 
 ##
-## $LastChangedDate: 2012-12-06 16:33:18 -0700 (Thu, 06 Dec 2012) $
-## $Rev: 330 $
-##
 ## \brief Graphical panel to interface with the laelaps_control node.
 ##
 ## \author Robin Knight (robin.knight@roadnarrows.com)
@@ -122,8 +119,10 @@ class window(Frame):
 
     self.m_icons['app_icon'] = \
                     self.m_imageLoader.loadImage("icons/LaelapsPanelIcon.png")
-    self.master.tk.call('wm', 'iconphoto', self.master._w,
-        self.m_icons['app_icon'])
+
+    if self.m_icons['app_icon'] is not None:
+      self.master.tk.call('wm', 'iconphoto', self.master._w,
+          self.m_icons['app_icon'])
 
     # craete and show widgets
     self.createWidgets()

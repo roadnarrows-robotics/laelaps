@@ -130,6 +130,8 @@ add_dependencies(laelaps_teleop laelaps_control_gencpp)
 
 install(
   PROGRAMS 
+    scripts/laelaps_alarms
     scripts/laelaps_panel
+    scripts/laelaps_ranges
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

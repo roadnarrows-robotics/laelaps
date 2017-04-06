@@ -4,21 +4,18 @@
 #
 # Link:      https://github.com/roadnarrows-robotics/laelaps
 #
-# ROS Node:  laelaps_panel
+# ROS Node:  laelaps_panel, laelaps_alarms
 #
 # File: AlarmsWin.py
 #
 ## \file 
-##
-## $LastChangedDate: 2012-12-06 16:33:18 -0700 (Thu, 06 Dec 2012) $
-## $Rev: 330 $
 ##
 ## \brief Laelaps alarms panel.
 ##
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2016.  RoadNarrows LLC.\n
+##   (C) 2016-2017  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -86,10 +83,56 @@ alarmColor = {
 # Class AlarmsWin
 # ------------------------------------------------------------------------------
 
-##
 ## \brief Alarms window class.
-##
+#
 class AlarmsWin(Toplevel):
+  #
+  ## \brief Constructor.
+  ##
+  ## \param master  Window parent master widget.
+  ## \param cnf     Configuration dictionary.
+  ## \param kw      Keyword options.
+  #
+  def __init__(self, master=None, cnf={}, **kw):
+    self.m_isCreated = True
+
+    Toplevel.__init__(self, master=master, cnf=cnf, **kw)
+
+    self.title("laelaps_alarms")
+
+    self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDeleteChild(self))
+
+    self.m_win = AlarmsFrame(master=self, cnf=cnf, **kw)
+
+    self.m_win.grid(row=0, column=0, padx=5, pady=5)
+
+    # close button
+    w = Button(self, width=10, text='Close',
+        command=lambda: self.onDeleteChild(self), anchor=CENTER)
+    w.grid(row=1, column=0, sticky=N, pady=5)
+
+    self.m_bttnClose = w
+
+    self.lift()
+
+  #
+  ## \brief On delete callback.
+  ##
+  ## \param w   Widget (not used).
+  #
+  def onDeleteChild(self, w):
+    if self.m_isCreated:
+      self.m_isCreated = False
+      self.destroy()
+
+
+# ------------------------------------------------------------------------------
+# Class AlarmsFrame
+# ------------------------------------------------------------------------------
+
+## \brief Alarms frame class.
+#
+class AlarmsFrame(Frame):
   #
   ## \brief Constructor.
   ##
@@ -105,25 +148,27 @@ class AlarmsWin(Toplevel):
     # intialize window data
     kw = self.initData(kw)
 
-    Toplevel.__init__(self, master=master, cnf=cnf, **kw)
-    self.title("Laelaps Alarms Panel")
+    self.m_imageLoader = ImageLoader(py_pkg='laelaps_control.images',
+                                      image_paths=imagePath)
+
+    Frame.__init__(self, master=master, cnf=cnf, **kw)
+
+    self.m_icons['app_icon'] = \
+                  self.m_imageLoader.loadImage("icons/LaelapsAlarmsIcon.png")
+
+    if self.m_icons['app_icon'] is not None:
+      self.master.tk.call('wm', 'iconphoto',
+          self.master._w, self.m_icons['app_icon'])
 
     # craete and show widgets
     self.createWidgets()
 
-    self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDeleteChild(self))
-
-    self.m_icons['app_icon'] = \
-                  self.m_imageLoader.loadImage("icons/LaelapsAlarmsIcon.png")
-    if self.m_icons['app_icon'] is not None:
-      self.tk.call('wm', 'iconphoto', self._w, self.m_icons['app_icon'])
+    self.grid(row=0, column=0, padx=5, pady=5)
 
     # subscribe to extended robot status data
     self.m_sub = rospy.Subscriber("laelaps_control/robot_status_ex", 
                      RobotStatusExtended, 
                      callback=self.updateAlarms) 
-
-    self.lift()
 
   #
   ## \brief Initialize class state data.
@@ -139,9 +184,6 @@ class AlarmsWin(Toplevel):
     self.m_debug          = False # default debug level
     self.m_icons          = {}    # must keep loaded icons referenced
     self.m_alarms         = {}    # alarm state
-
-    self.m_imageLoader = ImageLoader(py_pkg='laelaps_control.images',
-                                      image_paths=imagePath)
 
     if kw.has_key('debug'):
       self.m_debug = kw['debug']
@@ -162,12 +204,6 @@ class AlarmsWin(Toplevel):
     self.createAllMotorCtlrAlarmPanel(self, 2, 0)
     self.createSensorAlarmPanel(self, 3, 0)
 
-    # close button
-    w = Button(self, width=10, text='Close',
-        command=lambda: self.onDeleteChild(self), anchor=CENTER)
-    w.grid(row=4, column=0, sticky=N, pady=5)
-    self.m_bttnClose = w
-
   #
   ## \brief Create top gui heading.
   ##
@@ -179,7 +215,7 @@ class AlarmsWin(Toplevel):
     # top heading
     w = Label(parent)
     w['font']   = ('Helvetica', 16)
-    w['text']   = 'Laelaps Alarms Panel'
+    w['text']   = 'Laelaps Alarm Status'
     w['anchor'] = CENTER
     w.grid(row=row, column=col, sticky=E+W)
 
@@ -692,16 +728,6 @@ class AlarmsWin(Toplevel):
     else:
       severity = 'none'
     return severity
-
-  #
-  ## \brief On delete callback.
-  ##
-  ## \param w   Widget (not used).
-  #
-  def onDeleteChild(self, w):
-    self.m_isCreated = False
-    self.m_sub.unregister()
-    self.destroy()
 
 
 # ------------------------------------------------------------------------------
