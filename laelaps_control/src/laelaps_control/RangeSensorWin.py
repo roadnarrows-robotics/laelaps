@@ -100,7 +100,8 @@ class SensorViz:
   SlidingWinMaxSize =   5         # sliding window maximum size
   CanvasBg          = '#333333'   # canvas background color
   BeamColor         = [           # sensor beam color
-    '#333333',  #   0%
+    #'#333333',  #   0%
+    '#403333',  #   0%
     '#473333',  #  10%
     '#5b3333',  #  20%
     '#703333',  #  30%
@@ -314,31 +315,18 @@ class RangeSensorFrame(Frame):
           fill = SensorViz.TextFgColor)
 
       #
-      # parameterized beam lines
+      # Determine the parameterized lines coefficients for the beam rays. 
+      #
+      # x = x_0 + a * t, y = y_0 + b * t  where t = dist_meas / max
+      #
+      # Note: Robot is oriented up, so need to rotate by 90 degrees.
+      #
       radius = size[0] * SensorViz.BeamMaxDist / SensorViz.RobotBodyDim[0]
-      angle = sensor['beam_dir'] + degToRad(90.0) - degToRad(20.0)
-      sensor['a1'] = radius * math.cos(angle)
-      sensor['b1'] = radius * math.sin(angle)
-      angle = sensor['beam_dir'] + degToRad(90.0)
-      sensor['a2'] = radius * math.cos(angle)
-      sensor['b2'] = radius * math.sin(angle)
-      angle = sensor['beam_dir'] + degToRad(90.0) + degToRad(20.0)
-      sensor['a3'] = radius * math.cos(angle)
-      sensor['b3'] = radius * math.sin(angle)
-
-      # test
-      #self.m_canvas.delete(sensor['idBeam'])
-      #o = sensor['origin']
-      #t = SensorViz.BeamMaxDist / SensorViz.BeamMaxDist
-      #sensor['idBeam'] = self.m_canvas.create_polygon(
-      #    o[0], o[1],
-      #    o[0] + t * sensor['a1'], o[1] - t * sensor['b1'],
-      #    o[0] + t * sensor['a2'], o[1] - t * sensor['b2'],
-      #    o[0] + t * sensor['a3'], o[1] - t * sensor['b3'],
-      #    fill=SensorViz.BeamColor[-1])
-      #self.m_canvas.itemconfig(sensor['idText'], text="0.200")
-      #self.m_canvas.tag_raise(sensor['idText'])
-
+      rot90  = degToRad(90.0)
+      sensor['coef'] = [(0.0, 0.0)]   # origin a,b coefficients
+      for ray in [-20.0, -10.0, 0.0, 10.0, 20.0]:
+        angle = sensor['beam_dir'] + rot90 + degToRad(ray)
+        sensor['coef'].append((radius*math.cos(angle), radius*math.sin(angle)))
     
   #
   ## \brief Update all alarms from received status message.
@@ -400,26 +388,39 @@ class RangeSensorFrame(Frame):
     ibright = (int)(curBrightness / len(SensorViz.BeamColor))
     jbright = (int)(newBrightness / len(SensorViz.BeamColor))
 
-    # new beam
-
+    #
+    # Create a new beam when new object is detected or its distance has changed.
+    #
     if  newFilteredVal != SensorViz.BeamNoObj and \
         (newFilteredVal < curFilteredVal - 0.002 or \
          newFilteredVal > curFilteredVal + 0.002):
       if sensor['idBeam'] != None:
         self.m_canvas.delete(sensor['idBeam'])
-      o = sensor['origin']
+      x0, y0 = sensor['origin']
       t = newFilteredVal / SensorViz.BeamMaxDist
+      poly = []
+      for a,b in sensor['coef']:
+        poly.append((x0 + a * t, y0 - b * t))
       sensor['idBeam'] = self.m_canvas.create_polygon(
-          o[0], o[1],
-          o[0] + t * sensor['a1'], o[1] - t * sensor['b1'],
-          o[0] + t * sensor['a2'], o[1] - t * sensor['b2'],
-          o[0] + t * sensor['a3'], o[1] - t * sensor['b3'],
-          fill=SensorViz.BeamColor[jbright])
-    # new beam brightness
+          poly, fill=SensorViz.BeamColor[jbright])
+
+    #
+    # Set a new brightness for the current beam.
+    #
     elif jbright != ibright: 
       self.m_canvas.itemconfig(sensor['idBeam'],
                                 fill=SensorViz.BeamColor[jbright])
+      # special case
       if jbright == 0:
+        if sensor['idBeam'] != None:
+          self.m_canvas.delete(sensor['idBeam'])
+        x0, y0 = sensor['origin']
+        t = 1.0
+        poly = []
+        for a,b in sensor['coef']:
+          poly.append((x0 + a * t, y0 - b * t))
+        sensor['idBeam'] = self.m_canvas.create_polygon(
+          poly, fill=SensorViz.BeamColor[jbright])
         self.m_canvas.tag_lower(sensor['idText'])
 
     # new filtered value
