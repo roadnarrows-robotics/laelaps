@@ -633,7 +633,7 @@ namespace laelaps_control
      */
     void stampHeader(std_msgs::Header  &header,
                      u32_t             nSeqNum = 0,
-                     const std::string &strFrameId = "0");
+                     const std::string &strFrameId = "laelaps");
   };
 
 } // namespace laelaps_control

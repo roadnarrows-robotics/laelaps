@@ -10,15 +10,12 @@
 //
 /*! \file
  *
- * $LastChangedDate$
- * $Rev$
- *
  * \brief The ROS laelaps_control node class implementation.
  *
  * \author Robin Knight (robin.knight@roadnarrows.com)
  *
  * \par Copyright:
- * (C) 2015-2016  RoadNarrows
+ * (C) 2015-2017  RoadNarrows
  * (http://www.roadnarrows.com)
  * \n All Rights Reserved
  */
@@ -1235,7 +1232,7 @@ void LaelapsControl::publishImuStates()
     // for now until known
   m_msgImu.linear_acceleration_covariance = ZeroCovariance;
 
-  stampHeader(m_msgImu.header, m_msgImu.header.seq+1);
+  stampHeader(m_msgImu.header, m_msgImu.header.seq+1)
 
   //
   // Convert to alternative IMU ROS message
