@@ -1232,7 +1232,7 @@ void LaelapsControl::publishImuStates()
     // for now until known
   m_msgImu.linear_acceleration_covariance = ZeroCovariance;
 
-  stampHeader(m_msgImu.header, m_msgImu.header.seq+1)
+  stampHeader(m_msgImu.header, m_msgImu.header.seq+1);
 
   //
   // Convert to alternative IMU ROS message
