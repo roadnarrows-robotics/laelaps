@@ -394,15 +394,9 @@ class RangeSensorFrame(Frame):
     if  newFilteredVal != SensorViz.BeamNoObj and \
         (newFilteredVal < curFilteredVal - 0.002 or \
          newFilteredVal > curFilteredVal + 0.002):
-      if sensor['idBeam'] != None:
-        self.m_canvas.delete(sensor['idBeam'])
-      x0, y0 = sensor['origin']
       t = newFilteredVal / SensorViz.BeamMaxDist
-      poly = []
-      for a,b in sensor['coef']:
-        poly.append((x0 + a * t, y0 - b * t))
-      sensor['idBeam'] = self.m_canvas.create_polygon(
-          poly, fill=SensorViz.BeamColor[jbright])
+      self.shine(sensor, t, SensorViz.BeamColor[jbright])
+      self.m_canvas.tag_raise(sensor['idBeam'])
 
     #
     # Set a new brightness for the current beam.
@@ -412,16 +406,8 @@ class RangeSensorFrame(Frame):
                                 fill=SensorViz.BeamColor[jbright])
       # special case
       if jbright == 0:
-        if sensor['idBeam'] != None:
-          self.m_canvas.delete(sensor['idBeam'])
-        x0, y0 = sensor['origin']
-        t = 1.0
-        poly = []
-        for a,b in sensor['coef']:
-          poly.append((x0 + a * t, y0 - b * t))
-        sensor['idBeam'] = self.m_canvas.create_polygon(
-          poly, fill=SensorViz.BeamColor[jbright])
-        self.m_canvas.tag_lower(sensor['idText'])
+        self.shine(sensor, 1.0, SensorViz.BeamColor[jbright])
+        self.m_canvas.tag_lower(sensor['idBeam'])
 
     # new filtered value
     if newFilteredVal != curFilteredVal:
@@ -433,6 +419,15 @@ class RangeSensorFrame(Frame):
     
     # make sure value if visable
     self.m_canvas.tag_raise(sensor['idText'])
+
+  def shine(self, sensor, t, brightness):
+    if sensor['idBeam'] != None:
+      self.m_canvas.delete(sensor['idBeam'])
+    x0, y0 = sensor['origin']
+    poly = []
+    for a,b in sensor['coef']:
+      poly.append((x0 + a * t, y0 - b * t))
+    sensor['idBeam'] = self.m_canvas.create_polygon(poly, fill=brightness)
 
 
 # ------------------------------------------------------------------------------
