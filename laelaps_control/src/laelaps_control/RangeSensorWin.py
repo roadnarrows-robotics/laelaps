@@ -90,17 +90,12 @@ SensorInfo = [
 ## \brief Laelaps sensor visualization 'structure'.
 #
 class SensorViz:
-  BeamMinDist       = 0.0         # beam minimum distance (meters)
+  BeamMinDist       = 0.002       # trusted beam minimum distance (meters) 
   BeamMaxDist       = 0.200       # beam maximum distance (meters)
   BeamNoObj         = -1.0        # no object detected
-  BrightMax         = 100         # maximum beam brightness as percent
-  BrightMin         =   0         # minimum beam brightness as percent
-  BrightIncStepSize =  10         # increment beam brightness step size
-  BrightDecStepSize =  10         # decrement beam brightness step size
-  SlidingWinMaxSize =   5         # sliding window maximum size
+  SlidingWinMaxSize =  5          # sliding window maximum size
   CanvasBg          = '#333333'   # canvas background color
   BeamColor         = [           # sensor beam color
-    #'#333333',  #   0%
     '#403333',  #   0%
     '#473333',  #  10%
     '#5b3333',  #  20%
@@ -113,8 +108,12 @@ class SensorViz:
     '#ea3333',  #  90%
     '#ff3333'   # 100%
   ]
-  TextBgColor = '#333333'
-  TextFgColor = '#ffffff'
+  BrightMax         =  10         # maximum beam brightness color index
+  BrightMin         =   0         # minimum beam brightness color index
+  BrightIncStepSize =   1         # increment beam brightness step size
+  BrightDecStepSize =   1         # decrement beam brightness step size
+  TextBgColor = '#333333'         # text background color
+  TextFgColor = '#ffffff'         # text foreground color
   RobotBodyDim = (0.350, 0.250) # Laelaps body length x width dimensions(meters)
 
 
@@ -329,9 +328,9 @@ class RangeSensorFrame(Frame):
         sensor['coef'].append((radius*math.cos(angle), radius*math.sin(angle)))
     
   #
-  ## \brief Update all alarms from received status message.
+  ## \brief Update all sensor data from received message.
   ##
-  ## \param status    Robot extended status message.     
+  ## \param sensedDat   RangeState message.     
   #
   def updateSensorData(self, sensedData):
     i = 0
@@ -342,7 +341,7 @@ class RangeSensorFrame(Frame):
         if rawVal >= SensorViz.BeamMinDist and rawVal <= SensorViz.BeamMaxDist:
           self.detectedObj(self.m_range[name], rawVal)
         else:
-          self.noObj(self.m_range[name])
+          self.detectedNoObj(self.m_range[name])
 
   def detectedObj(self, sensor, rawVal):
     sensor['raw_value'] = rawVal
@@ -354,7 +353,7 @@ class RangeSensorFrame(Frame):
     sensor['filtered_value'] = filteredVal
     sensor['brightness']     = brightness
 
-  def noObj(self, sensor):
+  def detectedNoObj(self, sensor):
     sensor['raw_value'] = SensorViz.BeamNoObj
     filteredVal         = sensor['filtered_value']
     brightness          = sensor['brightness']
@@ -380,13 +379,13 @@ class RangeSensorFrame(Frame):
     curFilteredVal = sensor['filtered_value']
     curBrightness  = sensor['brightness']
 
+    # first time for sensor - force noobject beam
+    if sensor['idBeam'] is None:
+      self.shine(sensor, 1.0, SensorViz.BeamColor[0])
+
     # same beam and value
     if newFilteredVal == curFilteredVal and newBrightness == curBrightness:
       return
-
-    # brightness indices
-    ibright = (int)(curBrightness / len(SensorViz.BeamColor))
-    jbright = (int)(newBrightness / len(SensorViz.BeamColor))
 
     #
     # Create a new beam when new object is detected or its distance has changed.
@@ -395,18 +394,18 @@ class RangeSensorFrame(Frame):
         (newFilteredVal < curFilteredVal - 0.002 or \
          newFilteredVal > curFilteredVal + 0.002):
       t = newFilteredVal / SensorViz.BeamMaxDist
-      self.shine(sensor, t, SensorViz.BeamColor[jbright])
+      self.shine(sensor, t, SensorViz.BeamColor[newBrightness])
       self.m_canvas.tag_raise(sensor['idBeam'])
 
     #
     # Set a new brightness for the current beam.
     #
-    elif jbright != ibright: 
+    elif newBrightness != curBrightness: 
       self.m_canvas.itemconfig(sensor['idBeam'],
-                                fill=SensorViz.BeamColor[jbright])
+                                fill=SensorViz.BeamColor[newBrightness])
       # special case
-      if jbright == 0:
-        self.shine(sensor, 1.0, SensorViz.BeamColor[jbright])
+      if newBrightness == 0:
+        self.shine(sensor, 1.0, SensorViz.BeamColor[newBrightness])
         self.m_canvas.tag_lower(sensor['idBeam'])
 
     # new filtered value
@@ -421,7 +420,7 @@ class RangeSensorFrame(Frame):
     self.m_canvas.tag_raise(sensor['idText'])
 
   def shine(self, sensor, t, brightness):
-    if sensor['idBeam'] != None:
+    if sensor['idBeam'] is not None:
       self.m_canvas.delete(sensor['idBeam'])
     x0, y0 = sensor['origin']
     poly = []
