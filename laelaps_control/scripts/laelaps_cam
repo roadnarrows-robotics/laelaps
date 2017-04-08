@@ -1,0 +1,51 @@
+#!/bin/bash
+
+###############################################################################
+#
+# Package:   RoadNarrows Robotics Laelaps Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/laelaps
+#
+# ROS Node:  usb_cam services, rqt_image_view
+#
+# File: laelaps_cam
+#
+## \file 
+##
+## \brief Stand-alone graphical panel to display Laelaps camera video.
+##
+## \author Robin Knight (robin.knight@roadnarrows.com)
+##  
+## \par Copyright:
+##   (C) 2017.  RoadNarrows LLC.\n
+##   (http://www.roadnarrows.com)\n
+##   All Rights Reserved
+##
+# @EulaBegin@
+# @EulaEnd@
+#
+###############################################################################
+
+video_device=$(readlink /dev/fcam)
+
+# 
+# Front camera
+#
+if [ -n "${video_device}" ]
+then
+  video_device="/dev/"$(basename ${video_device})
+  window_name="Laelaps Front Camera"
+else
+  video_device=${video_device:-/dev/video1}
+  window_name="Laelaps Camera"
+fi
+
+roslaunch laelaps_launch usbcam.launch video_device:=${video_device} &
+
+roslaunchpid=$!
+
+sleep 1
+
+rosrun rqt_image_view rqt_image_view
+
+kill -s SIGTERM ${roslaunchpid}

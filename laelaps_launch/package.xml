@@ -1,27 +1,16 @@
 <?xml version="1.0"?>
 <package>
-  <name>laelaps</name>
-  <version>2.0.0</version>
-
-  <description>
-    The RoadNarrows Laelaps indoor/outdoor robotic platform ROS metapackage.
-    This metapackage provides core Laelaps ROS software packages.
-  </description>
+  <name>laelaps_launch</name>
+  <version>1.0.0</version>
+  <description>Provides Laelaps ROS launch files.</description>
 
   <author email="robin.knight@roadnarrows.com">Robin Knight</author>
   <maintainer email="robin.knight@roadnarrows.com">Robin Knight</maintainer>
+
   <license>MIT</license>
 
   <url type="website">http://roadnarrows.com</url>
   <url type="website">http://github.com/roadnarrows-robotics/laelaps</url>
 
   <buildtool_depend>catkin</buildtool_depend>
-
-  <run_depend>laelaps_control</run_depend>
-  <run_depend>laelaps_launch</run_depend>
-
-  <export>
-    <metapackage/>
-  </export>
-
 </package>
