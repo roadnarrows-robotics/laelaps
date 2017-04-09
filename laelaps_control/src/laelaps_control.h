@@ -10,15 +10,12 @@
 //
 /*! \file
  *
- * $LastChangedDate$
- * $Rev$
- *
  * \brief The ROS laelaps_control node class interface.
  *
  * \author Robin Knight (robin.knight@roadnarrows.com)
  *
  * \par Copyright:
- * (C) 2015-2016  RoadNarrows
+ * (C) 2015-2017  RoadNarrows
  * (http://www.roadnarrows.com)
  * \n All Rights Reserved
  */
@@ -78,6 +75,8 @@
 //
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
 #include "industrial_msgs/RobotStatus.h"
 #include "sensor_msgs/Illuminance.h"
 #include "sensor_msgs/Imu.h"
@@ -606,18 +605,25 @@ namespace laelaps_control
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
     /*!
-     * \brief Execute set duyt cycles subscibed topic callback.
+     * \brief Execute command to set duty cycles subscibed topic callback.
      *
      * \param msgDuty  Duty cycle message.
      */
-    void execSetDutyCycles(const laelaps_control::DutyCycle &msgDuty);
+    void execCmdDutyCycles(const laelaps_control::DutyCycle &msgDuty);
 
     /*!
-     * \brief Execute set velocities subscibed topic callback.
+     * \brief Execute command to set twist velocities subscibed topic callback.
+     *
+     * \param msgTwist  Velocity message.
+     */
+    void execCmdTwist(const geometry_msgs::Twist &msgTwist);
+
+    /*!
+     * \brief Execute command to set set velocities subscibed topic callback.
      *
      * \param msgVel  Velocity message.
      */
-    void execSetVelocities(const laelaps_control::Velocity &msgVel);
+    void execCmdVelocities(const laelaps_control::Velocity &msgVel);
 
 
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .

@@ -80,6 +80,7 @@
 //
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Twist.h"
 #include "industrial_msgs/TriState.h"
 #include "industrial_msgs/RobotStatus.h"
 #include "sensor_msgs/Illuminance.h"
@@ -1285,24 +1286,25 @@ void LaelapsControl::subscribeToTopics(int nQueueDepth)
 {
   string  strSub;
 
+  // laelaps specific velocity 
   strSub = "cmd_motor_duties";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
-                                          &LaelapsControl::execSetDutyCycles,
+                                          &LaelapsControl::execCmdDutyCycles,
                                           &(*this));
 
   // standard topic used in various ROS nodes for the twist message
-  //strSub = "cmd_vel";
-  //m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
-  //                                        &LaelapsControl::execSetTwist,
-  //                                        &(*this));
+  strSub = "cmd_vel";
+  m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+                                          &LaelapsControl::execCmdTwist,
+                                          &(*this));
 
   strSub = "cmd_wheel_velocities";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
-                                          &LaelapsControl::execSetVelocities,
+                                          &LaelapsControl::execCmdVelocities,
                                           &(*this));
 }
 
-void LaelapsControl::execSetDutyCycles(const laelaps_control::DutyCycle
+void LaelapsControl::execCmdDutyCycles(const laelaps_control::DutyCycle
                                                                       &msgDuty)
 {
   const char     *topic = "cmd_motor_duties";
@@ -1322,7 +1324,25 @@ void LaelapsControl::execSetDutyCycles(const laelaps_control::DutyCycle
   m_robot.setDutyCycles(duties);
 }
 
-void LaelapsControl::execSetVelocities(const laelaps_control::Velocity &msgVel)
+void LaelapsControl::execCmdTwist(const geometry_msgs::Twist &msgTwist)
+{
+  const char     *topic = "cmd_vel";
+
+  ROS_DEBUG("%s/%s", m_nh.getNamespace().c_str(), topic);
+
+  // set twist
+  ROS_INFO("%s", topic);
+
+  double velLin = msgTwist.linear.x;     // x = forward/backward
+  double velAng = msgTwist.angular.z;    // yaw = left/right turn
+
+  ROS_INFO("vel_linear=%lf m/s, vel_angular=%lf deg/s",
+        velLin, radToDeg(velAng));
+
+  m_robot.move(velLin, velAng);
+}
+
+void LaelapsControl::execCmdVelocities(const laelaps_control::Velocity &msgVel)
 {
   const char     *topic = "cmd_wheel_velocities";
   LaeMapVelocity  vel;

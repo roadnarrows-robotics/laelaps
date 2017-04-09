@@ -690,9 +690,10 @@ class window(Frame):
   #
   def cbMoveForward(self):
     self.showInfo("Moving forward.")
+    vel = degToRad(360.0)
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [20.0, 20.0, 20.0, 20.0]
+    cmd.velocities = [vel, vel, vel, vel]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -700,9 +701,10 @@ class window(Frame):
   #
   def cbMoveBackward(self):
     self.showInfo("Moving back.")
+    vel = degToRad(360.0)
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [-20.0, -20.0, -20.0, -20.0]
+    cmd.velocities = [-vel, -vel, -vel, -vel]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -710,9 +712,10 @@ class window(Frame):
   #
   def cbSpinLeft(self):
     self.showInfo("Spinning left.")
+    vel = degToRad(360.0)
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [-20.0,  20.0, -20.0, 20.0]
+    cmd.velocities = [-vel,  vel, -vel, vel]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -720,9 +723,10 @@ class window(Frame):
   #
   def cbSpinRight(self):
     self.showInfo("Spinning right.")
+    vel = degToRad(360.0)
     cmd = Velocity()
     cmd.names = ['left_front', 'right_front', 'left_rear', 'right_rear']
-    cmd.velocities = [20.0, -20.0, 20.0, -20.0]
+    cmd.velocities = [vel, -vel, vel, -vel]
     self.m_pub_velocities.publish(cmd)
   
   #
@@ -753,7 +757,7 @@ class window(Frame):
   #
   def cbEStop(self):
     if self.m_robotState['estop']['raw_val'] != TriState.TRUE:
-      self.showResetEStop()
+      #self.showResetEStop()
       try:
         rospy.wait_for_service("laelaps_control/estop", timeout=1)
       except rospy.ROSException, e:
@@ -765,11 +769,11 @@ class window(Frame):
         estop()
       except rospy.ServiceException, e:
         self.showError("Emergency stop request failed: %s." % (e.message))
-        self.showEStop()
+        #self.showEStop()
         return
       self.showError("Laelaps emergency stopped.")
     else:
-      self.showEStop()
+      #self.showEStop()
       try:
         rospy.wait_for_service("laelaps_control/reset_estop", timeout=1)
       except rospy.ROSException, e:
@@ -782,7 +786,7 @@ class window(Frame):
         reset_estop()
       except rospy.ServiceException, e:
         self.showError("Reset emergency stop request failed: %s." % (e.message))
-        self.showResetEStop()
+        #self.showResetEStop()
         return
       self.showInfo("Laelaps emergency stop has been reset.")
   
@@ -1155,8 +1159,10 @@ class window(Frame):
     if self.m_robotState[key]['raw_val'] != val:
       if val == TriState.ON:
         self.m_robotState[key]['widget'].update('red')
+        self.showResetEStop()
       elif val == TriState.OFF:
         self.m_robotState[key]['widget'].update('gray')
+        self.showEStop()
       else:
         self.m_robotState[key]['widget'].update('gray')
       self.m_robotState[key]['raw_val'] = val
