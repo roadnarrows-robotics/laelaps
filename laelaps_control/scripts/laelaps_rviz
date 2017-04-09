@@ -1,0 +1,42 @@
+#!/bin/bash
+
+###############################################################################
+#
+# Package:   RoadNarrows Robotics Laelaps Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/laelaps
+#
+# ROS Node:  tf, rviz
+#
+# File: laelaps_rviz
+#
+## \file 
+##
+## \brief Laelaps rviz script.
+##
+## \author Robin Knight (robin.knight@roadnarrows.com)
+##  
+## \par Copyright:
+##   (C) 2017.  RoadNarrows LLC.\n
+##   (http://www.roadnarrows.com)\n
+##   All Rights Reserved
+##
+# @EulaBegin@
+# @EulaEnd@
+#
+###############################################################################
+
+#
+# Multiple coordinate frames of reference tree transforms.
+# Note: Need to migrate to tf2
+#
+rosrun tf static_transform_publisher 0 0 0 0 0 0 1 map laelaps 10 &
+
+rospid=$!
+
+sleep 1
+
+# ros vizualizer
+rviz
+
+kill -s SIGTERM ${rospid}

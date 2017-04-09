@@ -137,6 +137,7 @@ install(
     scripts/laelaps_move_forward
     scripts/laelaps_panel
     scripts/laelaps_ranges
+    scripts/laelaps_rviz
     scripts/laelaps_spin_left
     scripts/laelaps_spin_right
     scripts/laelaps_stop
