@@ -1,0 +1,44 @@
+#!/bin/bash
+
+###############################################################################
+#
+# Package:   RoadNarrows Robotics Laelaps Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/laelaps
+#
+# File: laelaps_spin_left
+#
+## \file 
+##
+## \brief Spin Laelaps left about its center at constant speeed.
+##
+## Service type: SetVelocities
+##
+## A simple command demonstrating the use of rosservice to evoke a service.
+##
+## \author Robin Knight (robin.knight@roadnarrows.com)
+##  
+## \par Copyright:
+##   (C) 2017.  RoadNarrows LLC.\n
+##   (http://www.roadnarrows.com)\n
+##   All Rights Reserved
+##
+# @EulaBegin@
+# @EulaEnd@
+#
+###############################################################################
+
+# The Laelaps service.
+svc='/laelaps_control/set_velocities'
+
+# Velocities specified in radians/second, measured at the shaft/wheel
+#vel=0.1745      # 10 degrees/second
+vel=6.2832      # 360 degrees/second
+
+# The powertrain names. A powertrain is the controller, encoder, motor, gearbox,
+# shaft, wheel, and tire.
+powertrains="'left_front', 'right_front', 'left_rear', 'right_rear'"
+velocities="-${vel}, ${vel}, -${vel}, ${vel}" 
+
+rosservice call ${svc} \
+    "goal: {names: [${powertrains}], velocities: [${velocities}]}"

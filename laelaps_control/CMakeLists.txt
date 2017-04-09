@@ -132,7 +132,13 @@ install(
   PROGRAMS 
     scripts/laelaps_alarms
     scripts/laelaps_cam
+    scripts/laelaps_estop
+    scripts/laelaps_move_backward
+    scripts/laelaps_move_forward
     scripts/laelaps_panel
     scripts/laelaps_ranges
+    scripts/laelaps_spin_left
+    scripts/laelaps_spin_right
+    scripts/laelaps_stop
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
