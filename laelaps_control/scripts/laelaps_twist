@@ -39,17 +39,22 @@ from laelaps_control.TwistMoveWin import TwistMoveFrame
 # create root 
 root = Tk()
 
-# window 'x' button
-root.protocol('WM_DELETE_WINDOW', root.destroy)
-
 root.title('laelaps_ranges')
 
 # alarams frame
 frame = TwistMoveFrame(master=root)
 frame.grid(row=0, column=0, padx=5, pady=5)
 
+# on delete callback
+def onDelete():
+  frame.cleanup()
+  root.destroy()
+
+# window 'x' button
+root.protocol("WM_DELETE_WINDOW", onDelete)
+
 # close button
-w = Button(root, width=10, text='Close', command=root.destroy, anchor=CENTER)
+w = Button(root, width=10, text='Close', command=onDelete, anchor=CENTER)
 w.grid(row=1, column=0, sticky=N, pady=5)
 
 rospy.init_node("laelaps_twist")

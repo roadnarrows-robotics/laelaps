@@ -42,6 +42,8 @@ import rospy
 
 from geometry_msgs.msg import Twist # message
 
+from laelaps_control.srv import Stop              # service
+
 from laelaps_control.Utils import *
 
 
@@ -87,7 +89,7 @@ class TwistMoveWin(Toplevel):
 
     self.title("laelaps_twist")
 
-    self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDeleteChild(self))
+    self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDelete(self))
 
     self.m_frame = TwistMoveFrame(master=self, cnf=cnf, **kw)
 
@@ -95,7 +97,7 @@ class TwistMoveWin(Toplevel):
 
     # close button
     w = Button(self, width=10, text='Close',
-        command=lambda: self.onDeleteChild(self), anchor=CENTER)
+        command=lambda: self.onDelete(self), anchor=CENTER)
     w.grid(row=1, column=0, sticky=N, pady=5)
 
     self.m_bttnClose = w
@@ -107,7 +109,7 @@ class TwistMoveWin(Toplevel):
   ##
   ## \param w   Widget (not used).
   #
-  def onDeleteChild(self, w):
+  def onDelete(self, w):
     if self.m_isCreated:
       self.m_isCreated = False
       self.m_frame.cleanup()
@@ -227,51 +229,100 @@ class TwistMoveFrame(Frame):
     col   = 0
 
     #
-    # Linear
+    # Button subframe
     #
     subframe = Frame(wframe)
-    subframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+W+E)
-    subframe.columnconfigure(1, minsize=105)
+    #subframe['borderwidth'] = 2
+    #subframe['relief'] = 'ridge'
+    subframe.grid(row=row, column=col, padx=1, pady=1, sticky=N+W)
 
     # twist button
     w = self.createButton(subframe, 'Twist', 'icons/icon_bot_twist.png',
-                  command=lambda: self.cbTwist(self))
-    w.grid(row=0, column=0, sticky=W, pady=5)
+                  command=self.cbTwist)
+    w.grid(row=0, column=0, sticky=W, padx=1, pady=5)
 
-    w = Scale(subframe, from_=-2.0, to=2.0, orient=VERTICAL, resolution=0.1,
-        tickinterval=0.5, length=200, font=helv,
-        command=self.cbVelLin)
-    w.grid(row=0, column=1, sticky=N+E)
-    self.m_wVelLin = w
+    # stop button
+    w = self.createButton(subframe, 'Stop', 'icons/icon_bot_brake.png',
+                  command=self.cbStop)
+    w.grid(row=1, column=0, sticky=W, padx=1, pady=5)
 
-    w = Label(subframe, text="  linear velocity\n  (meters/s)", font=helv)
-    w.grid(row=0, column=2)
-
-    row += 1
+    col += 1
 
     #
-    # Angular
+    # Linear subframe
     #
     subframe = Frame(wframe)
-    subframe.grid(row=row, column=col, padx=1, pady=3, sticky=N+W+E)
+    #subframe['borderwidth'] = 2
+    #subframe['relief'] = 'ridge'
+    subframe.grid(row=row, column=col, padx=3, pady=(5,1), sticky=N+W)
+    subframe.columnconfigure(0, minsize=100)
+    subframe.columnconfigure(1, minsize=200)
 
-    w = Scale(subframe, from_=-45.0, to=45.0, orient=HORIZONTAL, resolution=1,
-        tickinterval=10.0, length=400,
+    # linear velocity scale (slider)
+    w = Scale(subframe, from_=2.0, to=-2.0, orient=VERTICAL, resolution=0.1,
+        tickinterval=0.5, length=220, font=helv,
+        command=self.cbVelLin)
+    #w['borderwidth'] = 2
+    #w['relief'] = 'ridge'
+    w.grid(row=0, column=0, sticky=W+E, padx=(25,0))
+    self.m_wVelLin = w
+    self.m_maxLin  = 2.0
+
+    w = Label(subframe, text="linear velocity\n  (meters/s)", font=helv)
+    #w['borderwidth'] = 2
+    #w['relief'] = 'ridge'
+    w.grid(row=0, column=1, sticky=W)
+
+    col += 1
+
+    #
+    # Canvas subframe
+    #
+    subframe = Frame(wframe)
+    subframe.grid(row=row, column=col, rowspan=2, padx=1, pady=3, sticky=N+W+E)
+
+    #dim = 220
+    dim = 300
+    self.m_canvas = Canvas(subframe, width=dim, height=dim)
+    self.m_canvas.grid(row=0, column=3, rowspan=2, sticky=N+E)
+    halfdim = dim/2
+    self.m_x0 = halfdim
+    self.m_y0 = halfdim
+    self.m_r  = halfdim - 10
+
+    self.idXAxis = self.m_canvas.create_line(
+        self.m_x0, self.m_y0+halfdim, self.m_x0, self.m_y0-halfdim,
+        arrow=LAST)
+    self.idYAxis = self.m_canvas.create_line(
+        self.m_x0+halfdim, self.m_y0, self.m_x0-halfdim, self.m_y0,
+        arrow=LAST)
+    self.idTwist  = None
+    self.idBot    = None
+    self.idExtras = None
+    self.idDbgBox = None
+    self.idDbgAng = None
+    self.showBot(self.m_x0, self.m_y0)
+
+    row += 1
+    col = 0
+
+    #
+    # Angular subframe
+    #
+    subframe = Frame(wframe)
+    subframe.grid(row=row, column=col, columnspan=2, padx=1, pady=3,
+        sticky=N+W+E)
+
+    # angular velocity scale (slider)
+    w = Scale(subframe, from_=-300.0, to=300.0, orient=HORIZONTAL, resolution=1,
+        tickinterval=60.0, length=420,
         font=helv, command=self.cbVelAng)
-    w.grid(row=0, column=0)
+    w.grid(row=0, column=0, sticky=N+W+E)
     self.m_wVelAng = w
 
     w = Label(subframe, text="angular velocity (degrees/s)",
         font=helv)
     w.grid(row=1, column=0)
-
-  def cbVelLin(self, val):
-    val = float(val)
-    # init 
-    if self.m_velLin is None:
-      self.m_velLin = val
-    elif val != self.m_velLin:
-      self.m_velLin = val
 
   #
   ## \brief Create button.
@@ -303,16 +354,186 @@ class TwistMoveFrame(Frame):
     w['command']  = command
     return w
 
+  def cbVelLin(self, val):
+    val = float(val)
+    # init 
+    if self.m_velLin is None:
+      self.m_velLin = val
+    elif val != self.m_velLin:
+      self.m_velLin = val
+      self.showArc()
+
   def cbVelAng(self, val):
     val = float(val)
     if self.m_velAng is None:
       self.m_velAng = val
     elif val != self.m_velAng:
       self.m_velAng = val
+      self.showArc()
 
-  def cbTwist(self, w):
+  def showArc(self):
+    t     = 1.0             # seconds
+    color = '#0000aa'       # arc color
+    rot90 = degToRad(90.0)  # rotate 90 degrees
+    x0    = self.m_x0       # x origin in pixel coordinates
+    y0    = self.m_y0       # y origin in pixel coordinates
+    rmax  = self.m_r        # maximum radius in pixels
+
+    dist = self.m_velLin * t # distance traveled in real world coordinates
+    deg  = self.m_velAng * t # degrees turned
+
+    d = rmax * dist / self.m_maxLin  # distance in pixel coordinates
+
+    if self.idTwist is not None:
+      self.m_canvas.delete(self.idTwist)  # bye bye
+      self.idTwist = None
+    if self.idExtras is not None:
+      self.m_canvas.delete(self.idExtras) # red shirt
+      self.idExtras = None
+
+    # no movement
+    if math.fabs(dist) < 0.1 and math.fabs(deg) < 2.0: 
+      x1 = x0
+      y1 = y0
+      pass
+
+    # linear movement only
+    elif math.fabs(deg) < 2.0:
+      x1 = x0
+      y1 = y0 - d
+      self.idTwist = self.m_canvas.create_line(x0, y0, x1, y1,
+          fill=color, width=3)
+
+    # angular movement only
+    elif math.fabs(dist) < 0.1: 
+      x1      = x0
+      y1      = y0
+      bbox    = (x0 - 10, y0 - 10, x0 + 10, y0 + 10)
+      if deg > 0.0:
+        start   = 0.0
+        extent  = 270.0
+        xs,ys   = x0, y0 + 10
+        xe,ye   = x0 + 10, y0 + 10
+      else:
+        start   = 270.0
+        extent  = 270.0
+        xs,ys   = x0, y0 + 10
+        xe,ye   = x0 - 10, y0 + 10
+      self.idTwist = self.m_canvas.create_arc(bbox,
+          start=start, extent=extent,
+          style=ARC, width=3, outline=color, fill=color)
+      self.idExtras = self.m_canvas.create_line(
+        xs, ys, xe, ye, arrow=LAST,
+        width=3, fill=color)
+
+    # blended movement
+    else:
+      if self.idDbgBox is not None:
+        self.m_canvas.delete(self.idDbgBox)  # hasta la vista
+        self.idDbgBox = None
+      if self.idDbgAng is not None:
+        self.m_canvas.delete(self.idDbgAng)  # and you too
+        self.idDbgAng = None
+
+      #
+      # Calculate a circular arc about x0,y0
+      #
+      a = degToRad(deg)
+
+      # radius for fixed arc length
+      r = math.fabs(d) / math.fabs(a)
+
+      # arc start point in pixel coordinates
+      xs = x0 + r
+      ys = y0
+
+      # arc end point in pixel coordinates
+      x1 = x0 + r * math.cos(a)
+      y1 = y0 - r * math.sin(a) 
+
+      extent = math.fabs(deg)
+
+      if deg >= 0.0 and dist >= 0.0:
+        q     = 'QI --> QII'    # label
+        x1    = x1 - r          # translate arc in negative x direction
+        bbox  = (x0 - 2 * r, y0 - r, x0, y0 + r)
+        start = 0.0
+      elif deg < 0.0 and dist >= 0.0:
+        q     = 'QIV --> QI'    # label
+        x1    = x0 + xs - x1    # reflect
+        y1    = y0 - y1 + y0    # translate
+        bbox  = (x0, y0 - r, x0 + 2 * r, y0 + r)
+        start = 180.0 - extent
+      elif deg >= 0.0 and dist < 0.0:
+        q     = 'QI --> QIV'    # label
+        x1    = x0 + xs - x1    # reflect
+        y1    = y0 - y1 + y0    # translate
+        bbox  = (x0, y0 - r, x0 + 2 * r, y0 + r)
+        start = 180.0
+      elif deg < 0.0 and dist < 0.0:
+        q     = 'QI --> QIV'    # label
+        x1    = x1 - r          # translate arc in negative x direction
+        bbox  = (x0 - 2 * r, y0 - r, x0, y0 + r)
+        start = 360.0 - extent
+      else:
+        q     = "Q? --> Q?"
+        x1 = x0
+        y1 = y0
+        bbox  = (x0 - 2 * r, y0 - r, x0, y0 + r)
+
+      #print 'DBG', q, bbox, start, extent
+
+      self.idTwist = self.m_canvas.create_arc(bbox,
+          start=start, extent=extent,
+          style=ARC, width=3, outline=color, fill=color)
+
+      # debug 
+      #self.idDbgBox = self.m_canvas.create_rectangle(bbox)
+      #self.idDbgAng = self.m_canvas.create_line(
+      #    x0, y0, x0 + d * math.cos(a), y0 - d * math.sin(a))
+
+    self.showBot(x1, y1)
+    
+  # show your bot
+  def showBot(self, x0, y0):
+    if self.idBot is not None:
+      self.m_canvas.delete(self.idBot)
+      self.idBot = None
+    self.idBot = self.m_canvas.create_oval(x0-4, y0-4, x0+4, y0+4,
+          outline='#000000', fill='#fed700')
+
+  def center(self, x0, y0, x1, y1, r):
+    q = ((x0 + x1)/2.0, (y0 + y1)/2.0)    # midpoint of p0 and p1
+    dx = x1 - x0
+    dy = y1 - y0
+    R = math.sqrt(dx * dx + dy * dy)      # distance between p0 and p1
+    m = (-dy, dx)                         # orthogonal slope
+    t = math.sqrt(r/R * r/R - 1/4.0)
+    cx = q[0] + t * m[0]
+    cy = q[1] + t * m[1]
+    return (cx, cy)
+
+
+  def cbTwist(self):
     self.publishTwist(self.m_velLin, degToRad(self.m_velAng))
 
+  #
+  ## \brief Brake to stop callback.
+  #
+  def cbStop(self):
+    try:
+      rospy.wait_for_service("laelaps_control/stop", timeout=1)
+    except rospy.ROSException, e:
+      return
+    try:
+      stop = rospy.ServiceProxy('laelaps_control/stop', Stop)
+      stop()
+    except rospy.ServiceException, e:
+     return
+    self.m_wVelLin.set(0.0)
+    self.m_wVelAng.set(0.0)
+
+  
   #
   ## \brief Publish twist.
   ##
@@ -330,7 +551,7 @@ class TwistMoveFrame(Frame):
     self.m_pub_twist.publish(cmd)
 
   def cleanup(self):
-    pass
+    self.cbStop()
 
 
 # ------------------------------------------------------------------------------
