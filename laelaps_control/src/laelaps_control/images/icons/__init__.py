@@ -11,6 +11,7 @@ __all__ = [
   'LaelapsImuIcon.png',
   'LaelapsPanelIcon.png',
   'LaelapsRangeIcon.png',
+  'LaelapsTwistIcon.png',
 
   'ROSIcon.png',
 
