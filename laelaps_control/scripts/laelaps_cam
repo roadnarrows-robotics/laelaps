@@ -48,4 +48,5 @@ sleep 1
 
 rosrun rqt_image_view rqt_image_view
 
-kill -s SIGTERM ${roslaunchpid}
+# keep runnig since others may be using the camera
+#kill -s SIGTERM ${roslaunchpid}

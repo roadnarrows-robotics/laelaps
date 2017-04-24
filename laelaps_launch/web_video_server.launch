@@ -13,7 +13,7 @@
   <arg name="image_width" default="640" />
   <arg name="image_height" default="480" />
 
-  <node name="usbcam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
     <param name="video_device" value="$(arg video_device)" />
     <param name="image_width" value="$(arg image_width)" />
     <param name="image_height" value="$(arg image_height)" />
@@ -22,7 +22,7 @@
     <param name="io_method" value="mmap"/>
   </node>
 
-  <node name="webcam" pkg="web_video_server" type="web_video_server" 
+  <node name="web_video_server" pkg="web_video_server" type="web_video_server" 
           output="screen">
   </node>
 </launch>

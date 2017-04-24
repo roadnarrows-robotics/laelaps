@@ -34,10 +34,8 @@ video_device=$(readlink /dev/fcam)
 if [ -n "${video_device}" ]
 then
   video_device="/dev/"$(basename ${video_device})
-  window_name="Laelaps Front Camera"
 else
   video_device=${video_device:-/dev/video0}
-  window_name="Laelaps Camera"
 fi
 
 roslaunch laelaps_launch web_video_server.launch video_device:=${video_device} &
