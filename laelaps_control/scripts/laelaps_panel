@@ -39,6 +39,9 @@ import tkFont
 
 import random
 
+import webbrowser
+import urlparse
+
 import roslib; roslib.load_manifest('laelaps_control')
 import rospy
 
@@ -63,6 +66,7 @@ from laelaps_control.AboutDlg import AboutDlg
 from laelaps_control.WarnDlg import WarnDlg
 from laelaps_control.AlarmsWin import AlarmsWin
 from laelaps_control.TwistMoveWin import TwistMoveWin
+from laelaps_control.RangeSensorWin import RangeSensorWin
 
 
 # ------------------------------------------------------------------------------
@@ -151,6 +155,7 @@ class window(Frame):
     self.m_subsysState    = {}    # subsystems state widgets, variables, values
     self.m_alarmsWin      = None  # alarms sub-panel
     self.m_twistWin       = None  # twist sub-panel
+    self.m_rangeWin       = None  # range sensor sub-panel
 
     if kw.has_key('config'):
       self.m_config = kw['config']
@@ -270,6 +275,20 @@ class window(Frame):
                                   self.cbSpecifyTwist)
     w.grid(row=row, column=0, sticky=N+E+W)
     self.m_keysNoMoves.append('specify_twist')
+
+    # range sensor window
+    row += 1
+    w = self.createButton(wframe, "Range\nSensors",
+                                  "icons/icon_bot_range.png",
+                                  self.cbRangeWin)
+    w.grid(row=row, column=0, sticky=N+E+W)
+
+    # usbcam web browser window
+    row += 1
+    w = self.createButton(wframe, "Web\nCam",
+                                  "icons/icon_camera.png",
+                                  self.cbCamBrowserWin)
+    w.grid(row=row, column=0, sticky=N+E+W)
 
     # debug 
     if self.m_debug:
@@ -761,6 +780,32 @@ class window(Frame):
     else:
       self.m_twistWin.lift()
   
+  #
+  ## \brief Show range sensor sub-panel window.
+  #
+  def cbRangeWin(self):
+    if self.m_rangeWin is None:
+      self.m_rangeWin = RangeSensorWin(self)
+    elif not self.m_rangeWin.m_isCreated:
+      del self.m_rangeWin
+      self.m_rangeWin = RangeSensorWin(self)
+    else:
+      self.m_rangeWin.lift()
+
+  #
+  ## \brief Show streaming camera video on a window in the default web browser. 
+  #
+  def cbCamBrowserWin(self):
+    master_uri = os.getenv('ROS_MASTER_URI')
+    topic      = 'topic=/usb_cam/image_raw&type=ros_compressed'
+    if master_uri:
+      p = urlparse.urlparse(master_uri)
+      url = p.scheme + '://' + p.hostname + ':8080/stream?' + topic
+      #url='http://laedev:8080/stream?topic=/usb_cam/image_raw&type=ros_compressed'
+      webbrowser.open_new_tab(url)
+    else:
+      self.showError("ROS_MASTER_URI is unset.")
+
   #
   ## \brief (Reset) Emergency stop button callback.
   #

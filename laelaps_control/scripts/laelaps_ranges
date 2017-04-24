@@ -35,21 +35,31 @@ import roslib; roslib.load_manifest('laelaps_control')
 import rospy
 
 from laelaps_control.RangeSensorWin import RangeSensorFrame
+from laelaps_control.Utils import *
 
 # create root 
 root = Tk()
 
-# window 'x' button
-root.protocol('WM_DELETE_WINDOW', root.destroy)
-
+# window title
 root.title('laelaps_ranges')
 
-# alarams frame
+# ranges frame
 frame = RangeSensorFrame(master=root)
 frame.grid(row=0, column=0, padx=5, pady=5)
 
+# on delete callback
+def onDelete():
+  root.destroy()
+
+# window 'x' button
+root.protocol('WM_DELETE_WINDOW', onDelete)
+
+# load image with frame's image loader
+iconClose = frame.loadImage('icons/icon_close_32.png')
+
 # close button
-w = Button(root, width=10, text='Close', command=root.destroy, anchor=CENTER)
+k, w = createCompoundButton(root, text='Close', image=iconClose,
+            command=onDelete, width=80)
 w.grid(row=1, column=0, sticky=N, pady=5)
 
 rospy.init_node("laelaps_ranges")

@@ -35,13 +35,16 @@ import roslib; roslib.load_manifest('laelaps_control')
 import rospy
 
 from laelaps_control.TwistMoveWin import TwistMoveFrame
+from laelaps_control.Utils import *
+
 
 # create root 
 root = Tk()
 
+# window title
 root.title('laelaps_ranges')
 
-# alarams frame
+# twist frame
 frame = TwistMoveFrame(master=root)
 frame.grid(row=0, column=0, padx=5, pady=5)
 
@@ -53,8 +56,12 @@ def onDelete():
 # window 'x' button
 root.protocol("WM_DELETE_WINDOW", onDelete)
 
+# load image with frame's image loader
+iconClose = frame.loadImage('icons/icon_close_32.png')
+
 # close button
-w = Button(root, width=10, text='Close', command=onDelete, anchor=CENTER)
+k, w = createCompoundButton(root, text='Close', image=iconClose,
+            command=onDelete, width=80)
 w.grid(row=1, column=0, sticky=N, pady=5)
 
 rospy.init_node("laelaps_twist")

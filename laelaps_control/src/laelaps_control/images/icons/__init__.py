@@ -16,10 +16,13 @@ __all__ = [
   'ROSIcon.png',
 
   'icon_alarm.png',
+  'icon_camera.png',
   'icon_close.png',
+  'icon_close_32.png',
   'icon_bot_back.png',
   'icon_bot_brake.png',
   'icon_bot_forward.png',
+  'icon_bot_range.png',
   'icon_bot_spin_left.png',
   'icon_bot_spin_right.png',
   'icon_bot_twist.png',

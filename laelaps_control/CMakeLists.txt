@@ -140,7 +140,8 @@ install(
     scripts/laelaps_rviz
     scripts/laelaps_spin_left
     scripts/laelaps_spin_right
-    scripts/laelaps_twist
     scripts/laelaps_stop
+    scripts/laelaps_twist
+    scripts/laelaps_webcam
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

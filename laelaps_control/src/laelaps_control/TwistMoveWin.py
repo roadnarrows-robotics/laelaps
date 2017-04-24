@@ -67,7 +67,6 @@ fgColors = {
 }
 
 
-
 # ------------------------------------------------------------------------------
 # Class TwistMoveWin
 # ------------------------------------------------------------------------------
@@ -95,11 +94,13 @@ class TwistMoveWin(Toplevel):
 
     self.m_frame.grid(row=0, column=0, padx=5, pady=5)
 
-    # close button
-    w = Button(self, width=10, text='Close',
-        command=lambda: self.onDelete(self), anchor=CENTER)
-    w.grid(row=1, column=0, sticky=N, pady=5)
+    # load close icon
+    self.m_iconClose = self.m_frame.loadImage('icons/icon_close_32.png')
 
+    # close button
+    k, w = createCompoundButton(self, text='Close', image=self.m_iconClose,
+        command=lambda: self.onDelete(self), width=80)
+    w.grid(row=1, column=0, sticky=N, pady=5)
     self.m_bttnClose = w
 
     self.lift()
@@ -143,8 +144,7 @@ class TwistMoveFrame(Frame):
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
 
-    self.m_icons['app_icon'] = \
-                  self.m_imageLoader.loadImage("icons/BotTwistIcon.png")
+    self.m_icons['app_icon'] = self.loadImage("icons/BotTwistIcon.png")
 
     if self.m_icons['app_icon'] is not None:
       self.master.tk.call('wm', 'iconphoto',
@@ -186,6 +186,16 @@ class TwistMoveFrame(Frame):
     self.m_velAng = None
 
     return kw
+
+  #
+  ## \brief Open image from file and convert to PhotoImage.
+  ##
+  ## \param filename    Image file name.
+  ##
+  ## \return Returns image widget on success, None on failure.
+  #
+  def loadImage(self, filename):
+    return self.m_imageLoader.loadImage(filename)
 
   #
   ## \brief Create gui widgets with supporting data and show.
@@ -337,7 +347,7 @@ class TwistMoveFrame(Frame):
   #
   def createButton(self, parent, text, imagefile, command, fg='black'):
     key = str.lower(text.replace("\n", "_"))
-    self.m_icons[key] = self.m_imageLoader.loadImage(imagefile)
+    self.m_icons[key] = self.loadImage(imagefile)
     w = Button(parent)
     w['text']     = text
     if self.m_icons[key]:

@@ -140,6 +140,42 @@ class ImageLoader:
 
 
 # ------------------------------------------------------------------------------
+# Misc. Widget Utilities
+# ------------------------------------------------------------------------------
+
+#
+## \brief Create compound button.
+##
+## \param parent    Parent widget.
+## \param text      Button text.
+## \param image     Loaded image. None for no image.
+## \param command   Callback for button push.
+## \param fg        Foreground text color.
+## \param width     Button width. If icon, then in pixels, else in characters.
+##
+## \return Returns 'nice' text button key and button widget (key, w).
+#
+def createCompoundButton(parent, text='', image=None, command=None,
+                                  fg='black', width=105):
+  key = str.lower(text.replace("\n", "_"))
+  w = Button(parent)
+  w['text'] = text
+  if image:
+    w['image']    = image
+    w['compound'] = LEFT
+    w['padx']     = 0
+    w['pady']     = 0
+    w['anchor']   = W
+    w['width']    = width
+  else:
+    w['anchor']   = CENTER
+    w['width']    = width
+  w['fg']       = fg
+  w['command']  = command
+  return key, w
+
+
+# ------------------------------------------------------------------------------
 # Misc. Utilities
 # ------------------------------------------------------------------------------
 

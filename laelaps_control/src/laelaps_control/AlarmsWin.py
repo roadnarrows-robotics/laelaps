@@ -102,15 +102,16 @@ class AlarmsWin(Toplevel):
 
     self.wm_protocol("WM_DELETE_WINDOW", lambda: self.onDeleteChild(self))
 
-    self.m_win = AlarmsFrame(master=self, cnf=cnf, **kw)
+    self.m_frame = AlarmsFrame(master=self, cnf=cnf, **kw)
+    self.m_frame.grid(row=0, column=0, padx=5, pady=5)
 
-    self.m_win.grid(row=0, column=0, padx=5, pady=5)
+    # load close icon
+    self.m_iconClose = self.m_frame.loadImage('icons/icon_close_32.png')
 
     # close button
-    w = Button(self, width=10, text='Close',
-        command=lambda: self.onDeleteChild(self), anchor=CENTER)
+    k, w = createCompoundButton(self, text='Close', image=self.m_iconClose,
+        command=lambda: self.onDeleteChild(self), width=80)
     w.grid(row=1, column=0, sticky=N, pady=5)
-
     self.m_bttnClose = w
 
     self.lift()
@@ -153,8 +154,7 @@ class AlarmsFrame(Frame):
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
 
-    self.m_icons['app_icon'] = \
-                  self.m_imageLoader.loadImage("icons/LaelapsAlarmsIcon.png")
+    self.m_icons['app_icon'] = self.loadImage("icons/LaelapsAlarmsIcon.png")
 
     if self.m_icons['app_icon'] is not None:
       self.master.tk.call('wm', 'iconphoto',
@@ -194,6 +194,16 @@ class AlarmsFrame(Frame):
       pass
 
     return kw
+
+  #
+  ## \brief Open image from file and convert to PhotoImage.
+  ##
+  ## \param filename    Image file name.
+  ##
+  ## \return Returns image widget on success, None on failure.
+  #
+  def loadImage(self, filename):
+    return self.m_imageLoader.loadImage(filename)
 
   #
   ## \brief Create gui widgets with supporting data and show.
