@@ -144,7 +144,7 @@ class TwistMoveFrame(Frame):
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
 
-    self.m_icons['app_icon'] = self.loadImage("icons/BotTwistIcon.png")
+    self.m_icons['app_icon'] = self.loadImage("icons/LaelapsTwistIcon.png")
 
     if self.m_icons['app_icon'] is not None:
       self.master.tk.call('wm', 'iconphoto',
