@@ -314,7 +314,8 @@ class RangeSensorFrame(Frame):
       # create beam placeholder
       sensor['origin'] = (origin[0]+sensor['boff'][0], 
                           origin[1]+sensor['boff'][1])
-      sensor['idBeam'] = None
+      sensor['idBgBeam'] = None
+      sensor['idBeam']   = None
 
       # create sensor value text
       sensor['idText'] = self.m_canvas.create_text(
@@ -389,8 +390,10 @@ class RangeSensorFrame(Frame):
     curBrightness  = sensor['brightness']
 
     # first time for sensor - force noobject beam
-    if sensor['idBeam'] is None:
-      self.shine(sensor, 1.0, SensorViz.BeamColor[0])
+    if sensor['idBgBeam'] is None:
+      self.bgShine(sensor)
+    #if sensor['idBeam'] is None:
+    #  self.fgShine(sensor, 1.0, SensorViz.BeamColor[SensorViz.BrightMin])
 
     # same beam and value
     if newFilteredVal == curFilteredVal and newBrightness == curBrightness:
@@ -403,7 +406,7 @@ class RangeSensorFrame(Frame):
         (newFilteredVal < curFilteredVal - 0.002 or \
          newFilteredVal > curFilteredVal + 0.002):
       t = newFilteredVal / SensorViz.BeamMaxDist
-      self.shine(sensor, t, SensorViz.BeamColor[newBrightness])
+      self.fgShine(sensor, t, SensorViz.BeamColor[newBrightness])
       self.m_canvas.tag_raise(sensor['idBeam'])
 
     #
@@ -414,7 +417,7 @@ class RangeSensorFrame(Frame):
                                 fill=SensorViz.BeamColor[newBrightness])
       # special case
       if newBrightness == 0:
-        self.shine(sensor, 1.0, SensorViz.BeamColor[newBrightness])
+        self.fgShine(sensor, 1.0, SensorViz.BeamColor[newBrightness])
         self.m_canvas.tag_lower(sensor['idBeam'])
 
     # new filtered value
@@ -428,7 +431,7 @@ class RangeSensorFrame(Frame):
     # make sure value if visable
     self.m_canvas.tag_raise(sensor['idText'])
 
-  def shine(self, sensor, t, brightness):
+  def fgShine(self, sensor, t, brightness):
     if sensor['idBeam'] is not None:
       self.m_canvas.delete(sensor['idBeam'])
     x0, y0 = sensor['origin']
@@ -437,6 +440,16 @@ class RangeSensorFrame(Frame):
       poly.append((x0 + a * t, y0 - b * t))
     sensor['idBeam'] = self.m_canvas.create_polygon(poly, fill=brightness)
 
+  def bgShine(self, sensor):
+    t = 1.0;
+    brightness = SensorViz.BeamColor[SensorViz.BrightMin]
+    if sensor['idBgBeam'] is not None:
+      self.m_canvas.delete(sensor['idBgBeam'])
+    x0, y0 = sensor['origin']
+    poly = []
+    for a,b in sensor['coef']:
+      poly.append((x0 + a * t, y0 - b * t))
+    sensor['idBgBeam'] = self.m_canvas.create_polygon(poly, fill=brightness)
 
 # ------------------------------------------------------------------------------
 # Unit Test Main
