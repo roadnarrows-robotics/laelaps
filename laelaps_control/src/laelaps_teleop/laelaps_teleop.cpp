@@ -163,6 +163,23 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
   m_iLedTempPattern   = LEDPatOff;
   m_nLedTempCounter   = 0;
 
+  // C++11 or greater
+#if __cplusplus >= 201103
+  map<int, int> m_buttonState = {
+    {ButtonIdEStop,       0},
+    {ButtonIdGovUp,       0},
+    {ButtonIdGovDown,     0},
+    {ButtonIdMoveModeDec, 0},
+    {ButtonIdMoveModeInc, 0},
+    //{ButtonIdBrake,     0},
+    {ButtonIdPause,       0},
+    {ButtonIdStart,       0},
+    {ButtonIdMoveLin,     0},
+    {ButtonIdMoveAng,     0}
+  };
+
+  // C++98
+#else
   m_buttonState = map_list_of
       (ButtonIdEStop,       0)
       (ButtonIdGovUp,       0)
@@ -174,6 +191,7 @@ LaelapsTeleop::LaelapsTeleop(ros::NodeHandle &nh, double hz) :
       (ButtonIdStart,       0)
       (ButtonIdMoveLin,     0)
       (ButtonIdMoveAng,     0);
+#endif
 }
 
 LaelapsTeleop::~LaelapsTeleop()
